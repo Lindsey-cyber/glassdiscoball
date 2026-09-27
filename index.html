@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Lindsey Ma · software engineering, machine learning, computer vision, statistics, and computational neuroscience.">
+  <meta name="author" content="Lindsey Ma">
+  <title>Lindsey Ma</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body>
+  <a
+  class="play-link"
+  href="https://lindseyma.com/play/"
+  aria-label="Enter Play"
+  title="Play"
+  >↑</a>
+  <main class="site-shell">
+    <header class="intro">
+      <div class="intro-copy">
+        <h1 id="name-easter-egg" tabindex="0" role="button" aria-label="Lindsey Ma, 马兰馨 — click for a small confetti effect">
+          Lindsey Ma <span lang="zh-CN">马兰馨</span>
+        </h1>
+
+        <p>
+          I'm a Columbia University Statistics graduate, with a focus on computer vision. I also love biking and hiking.
+        </p>
+
+        <p>
+          I received my M.S. in Statistics from <a href="https://www.columbia.edu/" target="_blank" rel="noreferrer">Columbia University</a>
+          and my B.A. in Economics from <a href="https://en.ruc.edu.cn/" target="_blank" rel="noreferrer">Renmin University of China</a>.
+        </p>
+
+        <nav class="profile-links" aria-label="Profile links">
+          <a href="mailto:lm3879@columbia.edu">Email</a>
+          <span>/</span>
+          <a href="https://storage.googleapis.com/www.lindseyma.com/assets/Lindsey-Ma-CV.pdf" target="_blank" rel="noreferrer">CV</a>
+          <span>/</span>
+          <a href="https://github.com/Lindsey-cyber" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+
+      <div class="intro-photo">
+        <button class="portrait-button" id="photo-spark" type="button" aria-label="Lindsey Ma portrait — click for a small sparkle effect">
+          <img
+            id="profile-photo"
+            src="images/lindsey-ma-profile.jpg"
+            alt="Portrait of Lindsey Ma"
+          >
+          <span class="portrait-fallback" id="portrait-fallback" hidden aria-hidden="true">LM</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="whoami-block" aria-label="About Lindsey">
+      <button id="whoami-toggle" class="whoami-toggle" type="button" aria-expanded="false" aria-controls="whoami-terminal">&gt; whoami</button>
+      <div id="whoami-terminal" class="whoami-terminal" hidden>
+        <div><span class="prompt">$</span> whoami</div>
+        <div class="terminal-answer">Lindsey Ma</div>
+        <div><span class="prompt">$</span> cat focus.txt</div>
+        <div class="terminal-answer">machine learning · computational neuroscience</div>
+        <div><span class="prompt">$</span> cat miscellaneous.txt</div> 
+        <div class="terminal-answer"> <a href="https://bioai-rho.vercel.app/" target="_blank" rel="noreferrer">Paper Kiosk</a> · a feed I built for myself to follow AI × biology papers </div>
+      </div>
+    </section>
+
+    <section class="section-block" aria-labelledby="internship-heading">
+      <h2 id="internship-heading">Experience</h2>
+      <p>
+        I build and deploy machine learning systems for computer vision.
+      </p>
+    </section>
+
+    <section class="project-list" aria-label="Selected internship">
+      <article class="project-card featured">
+        <div class="project-media">
+          <img
+            class="project-image-natural"
+            src="images/plant-recognition-system.png"
+            alt="Mobile plant recognition and species identification system"
+          >
+        </div>
+        <div class="project-content">
+          <h3>Plant Recognition System</h3>
+          <p class="project-meta">
+            <strong>SWE Intern</strong>, Arborphy AI<br>
+            May 2026 – Present, New York, ongoing
+          </p>
+          <div class="project-toggles">
+            <details class="project-toggle">
+              <summary>I own the CV/ML stack.</summary>
+              <p>
+                Owning the CV/ML stack for a Pokémon Go–style mobile plant discovery and species identification system.
+              </p>
+            </details>
+            <details class="project-toggle">
+              <summary>I build how it makes decisions online.</summary>
+              <p>
+                Building the online inference pipeline, using EfficientNet and a multi-agent system to extract localized morphological and color features, triage images based on confidence and visual evidence, and ground species predictions in a botanical knowledge graph.
+              </p>
+            </details>
+            <details class="project-toggle">
+              <summary>I build how we measure and improve it offline.</summary>
+              <p>
+                Building the offline pipeline to diagnose model failures through representation analysis, clustering, and segmentation, then fine-tuning models to improve accuracy on a large-scale plant image dataset.
+              </p>
+            </details>
+            <details class="project-toggle">
+              <summary>I ship it under real production constraints.</summary>
+              <p>
+                Deploying the end-to-end system to the mobile app for real-time user interactions, routing easy cases through lightweight on-device inference and hard cases to cloud models to balance latency, cost, and accuracy.
+              </p>
+            </details>
+          </div>
+          <p class="project-tags">Computer vision · Multi-agent systems · ML deployment</p>
+        </div>
+      </article>
+
+    <article class="project-card">
+      <div class="project-media">
+        <img
+          class="project-image-natural"
+          src="images/badminton-robotics-vision-system.png"
+          alt="Real-time player pose and shuttlecock detection for a badminton training system"
+        >
+      </div>
+      <div class="project-content">
+        <h3>Real-Time Vision for Robotics</h3>
+        <p class="project-meta">
+          <strong>Software Engineer</strong>, <a class="subtle-link" href="https://en.innoxsz.com/" target="_blank" rel="noreferrer">InnoX Academy</a> Robotics Lab<br>
+          May 2025 – December 2025, Shenzhen
+        </p>
+        <p>
+          I fine-tuned YOLO for player and shuttlecock detection and pose estimation in a real-time badminton training system.
+        </p>
+        <p>
+          I built the real-time vision pipeline to track shuttlecock trajectories and estimate speed, optimizing inference to 30 FPS on a Raspberry Pi.
+        </p>
+        <p>
+          I integrated a local LLM-based voice interface for hands-free robot control using Ollama, a microphone, and a speaker.
+        </p>
+
+        <p class="project-tags">Computer vision · Edge deployment</p>
+      </div>
+    </article>
+  </section>
+
+    <section class="section-block" aria-labelledby="research-heading">
+      <h2 id="research-heading">Research</h2>
+      <p>
+        In Liam Paninski’s lab, I worked on recovering neural signals from noisy two-photon calcium imaging.
+      </p>
+    </section>
+
+    <section class="project-list" aria-label="Selected research">
+
+      <article class="project-card featured">
+        <div class="project-media">
+          <img
+            class="project-image-natural"
+            src="images/self-supervised-neural-imaging.png"
+            alt="Two-photon calcium imaging data used for self-supervised denoising"
+          >
+        </div>
+        <div class="project-content">
+          <h3><a class="project-title-link" href="projects/self-supervised-neural-imaging.html">Self-Supervised Learning for Neural Imaging</a></h3>
+          <p class="project-meta">
+            <strong>Research Assistant</strong>, Center for Theoretical Neuroscience, Columbia Zuckerman Institute<br>
+            January 2025 – May 2026, New York
+          </p>
+          <p>
+            Designed and trained a <strong>self-supervised blind-spot neural network</strong> in PyTorch for denoising two-photon calcium-imaging movies under temporally correlated noise.
+          </p>
+          <p>
+            Conducted systematic ablations of masking strategies, receptive fields, and preprocessing across five real and simulated imaging datasets, evaluating latent-signal recovery and neuronal morphology preservation.
+          </p>
+          <p>
+            Rebuilt the lab’s PMD preprocessing pipeline, reducing residual video energy by 20% and downstream decoding variance by 7% versus baseline.
+          </p>
+          <p class="project-tags">Computational neuroscience · Self-supervised learning · Two-photon calcium imaging</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="section-block" aria-labelledby="projects-heading">
+      <h2 id="projects-heading">Selected Projects</h2>
+    </section>
+
+    <section class="project-list compact" aria-label="Selected projects">
+      <article class="project-card">
+        <div class="project-media">
+          <img
+            class="project-image-natural"
+            src="images/flywire-connectome-umap.png"
+            alt="Three-dimensional UMAP embedding of the FlyWire connectome"
+          >
+        </div>
+        <div class="project-content">
+          <h3>Community Structure in the FlyWire Connectome</h3>
+          <p class="project-meta"><em>Computational Statistics Project</em>, May 2025</p>
+          <p>
+            Applied Bayesian stochastic block models to the FlyWire whole-brain connectome to infer cell-type organization; evaluated community structure with posterior predictive checks and visualized embeddings with UMAP.
+          </p>
+          <p class="project-tags">Bayesian modeling · Connectomics</p>
+        </div>
+      </article>
+
+      <article class="project-card">
+        <div class="project-media">
+          <img
+            class="project-image-natural"
+            src="images/eeg-common-spatial-patterns.png"
+            alt="Common spatial pattern maps used for EEG motor-imagery decoding"
+          >
+        </div>
+        <div class="project-content">
+          <h3>Motor-Imagery Decoding from EEG</h3>
+          <p class="project-meta"><em>Brain Computer Interfaces Lab Project</em>, January 2025</p>
+          <p>
+            Extracted spatial features from real-time EEG recordings using Common Spatial Pattern (CSP) and trained a linear discriminant analysis (LDA) classifier to decode left- versus right-hand motor imagery, achieving 80% mean accuracy.
+          </p>
+          <p class="project-tags">Brain computer interfaces · EEG signal processing</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="section-block details-grid" aria-label="Education and skills">
+      <div>
+        <h2>Education</h2>
+        <div class="detail-entry">
+          <h3>Columbia University</h3>
+          <p><strong>M.S. in Statistics</strong><br>September 2024 – May 2026</p>
+          <p class="small-text">
+            Neural Networks &amp; Deep Learning, Advanced Machine Learning, Computational Statistics, Time-Series Modeling, Stochastic Processes,
+            Statistical Analysis of Neural Data, Robot Learning, Robotics Studio, Brain Computer Interfaces Lab.
+          </p>
+        </div>
+        <div class="detail-entry">
+          <h3>Renmin University of China</h3>
+          <p><strong>B.A. in Economics</strong><br>September 2019 – June 2023</p>
+        </div>
+      </div>
+
+      <div>
+        <h2>Technical Skills</h2>
+        <div class="detail-entry">
+          <h3>Programming &amp; ML</h3>
+          <p>Python, R, SQL, PyTorch, Hugging Face, scikit-learn</p>
+        </div>
+        <div class="detail-entry">
+          <h3>Systems &amp; Tools</h3>
+          <p>FastAPI, Docker, vLLM, Ollama, Neo4j</p>
+        </div>
+        <div class="detail-entry">
+          <h3>Areas of Interest</h3>
+          <p>machine learning systems, computer vision, computational neuroscience</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block" aria-labelledby="experience-heading">
+      <h2 id="experience-heading">Awards &amp; Activities</h2>
+
+      <div class="timeline-entry">
+        <div class="timeline-title">
+          <h3>Blockchain Hackathons, Team Leader</h3>
+          <span>September 2025 – October 2025</span>
+        </div>
+        <p>
+          Won second place at the XRPL Hackathon ($5,000) and third place at the Stellar Hackathon ($3,000).
+          Led the team to build StrataFi and venMorph in separate 24-hour hackathons, implementing smart-contract
+          integrations, backend transaction-processing pipelines, and multi-wallet testing suites.
+        </p>
+      </div>
+
+      <div class="timeline-entry">
+        <div class="timeline-title">
+          <h3>Columbia AI Alignment Club, Technical Fellow</h3>
+          <span>February 2025 – May 2026</span>
+        </div>
+        <p>
+          Evaluated frontier models and explored mechanistic interpretability techniques, including activation steering and latent-knowledge elicitation.
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      <p>
+        © <span id="year"></span> Lindsey Ma. Design inspired by
+        <a href="https://jonbarron.info/" target="_blank" rel="noreferrer">Jon Barron’s academic website</a>.
+      </p>
+    </footer>
+  </main>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

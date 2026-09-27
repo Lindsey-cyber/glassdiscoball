@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Lindsey Ma · Play" />
+  <title>Play · Lindsey Ma</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Keep the exact layout language of the home page. -->
+  <link rel="stylesheet" href="../stylesheet.css">
+
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    .play-back {
+      position: fixed;
+      top: 24px;
+      right: 28px;
+      z-index: 30;
+      color: inherit;
+      text-decoration: none;
+      font: 400 22px/1 Lato, sans-serif;
+      opacity: .62;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .play-back:hover,
+    .play-back:focus-visible {
+      opacity: 1;
+      transform: translateY(2px);
+    }
+
+    .play-copy p {
+      max-width: 34rem;
+    }
+
+    /* This is intentionally the same right-hand slot used by the portrait. */
+    .orb-host {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      min-width: 150px;
+      isolation: isolate;
+    }
+
+    #orb-canvas {
+      position: absolute;
+      inset: -38%;
+      width: 176%;
+      height: 176%;
+      display: block;
+      touch-action: none;
+      cursor: grab;
+      outline: none;
+    }
+    #orb-canvas:active { cursor: grabbing; }
+
+    .orb-aura {
+      position: absolute;
+      z-index: -1;
+      left: 50%;
+      top: 53%;
+      width: 84%;
+      height: 84%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle,
+          rgba(111, 139, 255, .10) 0%,
+          rgba(196, 112, 255, .055) 36%,
+          rgba(255, 255, 255, 0) 72%);
+      filter: blur(18px);
+      pointer-events: none;
+    }
+
+    .orb-label {
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 10px);
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: .78rem;
+      letter-spacing: .09em;
+      text-transform: lowercase;
+      opacity: .35;
+      user-select: none;
+      pointer-events: none;
+      transition: opacity 180ms ease;
+    }
+
+    .orb-host:hover .orb-label { opacity: .58; }
+
+    .orb-fallback {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 24%, #fff 0 4%, transparent 13%),
+        conic-gradient(from 25deg, #89baff, #c79cff, #79e7df, #f4a4db, #8ba7ff, #89baff);
+      box-shadow: inset -20px -20px 36px rgba(15, 20, 60, .28),
+                  0 18px 48px rgba(60, 70, 160, .18);
+    }
+
+    .orb-host.is-fallback .orb-fallback { display: grid; }
+    .orb-host.is-fallback #orb-canvas { display: none; }
+
+    @media (max-width: 700px) {
+      #orb-canvas {
+        inset: -25%;
+        width: 150%;
+        height: 150%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .orb-label { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <a class="play-back" href="../" aria-label="Back home" title="Back home">↓</a>
+
+  <main class="site-shell">
+    <header class="intro">
+      <div class="intro-copy play-copy">
+        <h1>Play</h1>
+        <p>
+          A small space for things that do not need to be useful.
+        </p>
+        <p>
+          Drag the object. Click it once to let it go; click again to bring it back.
+        </p>
+      </div>
+
+      <!-- Same structural slot as the portrait on the home page. -->
+      <div class="intro-photo">
+        <div class="orb-host" id="orb-host">
+          <div class="orb-aura" aria-hidden="true"></div>
+          <canvas
+            id="orb-canvas"
+            tabindex="0"
+            aria-label="Interactive faceted glass sphere. Drag to spin; click to scatter or reassemble."
+          ></canvas>
+          <div class="orb-fallback" aria-hidden="true"></div>
+          <div class="orb-label" aria-hidden="true">drag · click</div>
+        </div>
+      </div>
+    </header>
+  </main>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+    import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+
+    const canvas = document.getElementById("orb-canvas");
+    const host = document.getElementById("orb-host");
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: "high-performance"
+      });
+    } catch (err) {
+      host.classList.add("is-fallback");
+      throw err;
+    }
+
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(31, 1, 0.1, 100);
+    camera.position.set(0, 0, 8.2);
+
+    // A neutral studio environment creates moving highlights without a visible skybox.
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = environment;
+
+    const key = new THREE.DirectionalLight(0xeaf4ff, 4.2);
+    key.position.set(-4.5, 5.5, 5);
+    scene.add(key);
+
+    const cyan = new THREE.PointLight(0x77dfff, 20, 10, 2);
+    cyan.position.set(-3.8, -1.0, 4.2);
+    scene.add(cyan);
+
+    const violet = new THREE.PointLight(0xb486ff, 22, 10, 2);
+    violet.position.set(3.4, 2.0, 3.4);
+    scene.add(violet);
+
+    const rose = new THREE.PointLight(0xff8bc7, 12, 8, 2);
+    rose.position.set(2.0, -3.2, 2.4);
+    scene.add(rose);
+
+    const orb = new THREE.Group();
+    scene.add(orb);
+
+    /*
+      Build the sphere as many real beveled glass tiles.
+      Fibonacci-sphere placement gives a nearly uniform distribution without
+      obvious latitude bands. Each tile points along its own surface normal.
+    */
+    const TILE_COUNT = 224;
+    const RADIUS = 1.72;
+    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
+    const shardGeometry = new RoundedBoxGeometry(0.28, 0.28, 0.065, 2, 0.025);
+    shardGeometry.computeVertexNormals();
+
+    const palette = [
+      0xb9dcff, // ice blue
+      0xc9b7ff, // violet glass
+      0xa8fff0, // cyan glass
+      0xffc1e1, // restrained rose
+      0xe7edff, // silver white
+      0x9fb9ff
+    ];
+
+    const shards = [];
+    const dummy = new THREE.Object3D();
+    const zAxis = new THREE.Vector3(0, 0, 1);
+
+    function seeded(i, salt = 0) {
+      const x = Math.sin(i * 91.733 + salt * 17.17) * 43758.5453;
+      return x - Math.floor(x);
+    }
+
+    for (let i = 0; i < TILE_COUNT; i++) {
+      const y = 1 - (i / (TILE_COUNT - 1)) * 2;
+      const ring = Math.sqrt(Math.max(0, 1 - y * y));
+      const theta = GOLDEN_ANGLE * i;
+
+      const normal = new THREE.Vector3(
+        Math.cos(theta) * ring,
+        y,
+        Math.sin(theta) * ring
+      ).normalize();
+
+      const position = normal.clone().multiplyScalar(RADIUS);
+
+      const material = new THREE.MeshPhysicalMaterial({
+        color: palette[i % palette.length],
+        metalness: 0.34,
+        roughness: 0.075 + seeded(i, 1) * 0.06,
+        transmission: 0.28,
+        thickness: 0.18,
+        ior: 1.48,
+        iridescence: 0.78,
+        iridescenceIOR: 1.3,
+        iridescenceThicknessRange: [100, 430],
+        clearcoat: 1,
+        clearcoatRoughness: 0.045,
+        envMapIntensity: 1.9
+      });
+
+      const mesh = new THREE.Mesh(shardGeometry, material);
+      mesh.position.copy(position);
+
+      // Tile local +Z faces away from sphere center.
+      mesh.quaternion.setFromUnitVectors(zAxis, normal);
+
+      // Tiny deterministic twist and scale variation prevents a tiled-grid look.
+      mesh.rotateZ((seeded(i, 2) - 0.5) * 0.34);
+      const sx = 0.82 + seeded(i, 3) * 0.34;
+      const sy = 0.82 + seeded(i, 4) * 0.34;
+      mesh.scale.set(sx, sy, 1);
+
+      mesh.userData.homePosition = position.clone();
+      mesh.userData.homeQuaternion = mesh.quaternion.clone();
+
+      const explodeDirection = normal.clone()
+        .add(new THREE.Vector3(
+          (seeded(i, 5) - 0.5) * 0.85,
+          (seeded(i, 6) - 0.5) * 0.85,
+          (seeded(i, 7) - 0.5) * 0.85
+        ))
+        .normalize();
+
+      mesh.userData.explodePosition = position.clone().add(
+        explodeDirection.multiplyScalar(1.15 + seeded(i, 8) * 1.9)
+      );
+
+      mesh.userData.spinAxis = new THREE.Vector3(
+        seeded(i, 9) - 0.5,
+        seeded(i, 10) - 0.5,
+        seeded(i, 11) - 0.5
+      ).normalize();
+
+      mesh.userData.spinAmount = (seeded(i, 12) - 0.5) * 2.4;
+
+      orb.add(mesh);
+      shards.push(mesh);
+    }
+
+    // Dark inner core gives the transparent pieces depth and contrast.
+    const core = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(1.49, 5),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x15192c,
+        roughness: 0.3,
+        metalness: 0.45,
+        clearcoat: 0.5,
+        envMapIntensity: 0.9
+      })
+    );
+    orb.add(core);
+
+    // Interaction state: momentum rather than direct "mouse = rotation".
+    const angularVelocity = new THREE.Vector2(0.0018, 0.0032);
+    let pointerDown = false;
+    let dragged = false;
+    let lastX = 0, lastY = 0, downX = 0, downY = 0;
+    let scattered = false;
+    let scatterT = 0;
+    let scatterTarget = 0;
+
+    canvas.addEventListener("pointerdown", (e) => {
+      pointerDown = true;
+      dragged = false;
+      downX = lastX = e.clientX;
+      downY = lastY = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!pointerDown) return;
+
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) dragged = true;
+
+      // An impulse-like interaction. Velocity survives after release.
+      angularVelocity.y += dx * 0.00042;
+      angularVelocity.x += dy * 0.00042;
+
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    function release(e) {
+      if (!pointerDown) return;
+      pointerDown = false;
+      try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+
+      if (!dragged) {
+        scattered = !scattered;
+        scatterTarget = scattered ? 1 : 0;
+
+        // Give the assembled object a small physical-feeling kick.
+        angularVelocity.y += scattered ? 0.010 : -0.006;
+        angularVelocity.x += scattered ? -0.004 : 0.003;
+      }
+    }
+
+    canvas.addEventListener("pointerup", release);
+    canvas.addEventListener("pointercancel", release);
+
+    canvas.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        scattered = !scattered;
+        scatterTarget = scattered ? 1 : 0;
+      }
+    });
+
+    const clock = new THREE.Clock();
+
+    function smoothstep(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.max(1, Math.floor(rect.width));
+      const h = Math.max(1, Math.floor(rect.height));
+
+      if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) ||
+          canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      resize();
+
+      const dt = Math.min(clock.getDelta(), 0.033);
+      const frame = dt * 60;
+
+      // Angular damping: the sphere has inertia and slowly settles.
+      if (!pointerDown) {
+        const damping = Math.pow(0.973, frame);
+        angularVelocity.multiplyScalar(damping);
+
+        if (!reduceMotion && angularVelocity.length() < 0.0012) {
+          angularVelocity.y += 0.000012 * frame;
+        }
+      }
+
+      if (!reduceMotion) {
+        orb.rotation.x += angularVelocity.x * frame;
+        orb.rotation.y += angularVelocity.y * frame;
+      }
+
+      // Critically-damped-ish visual transition for scatter/reassembly.
+      const response = 1 - Math.pow(0.88, frame);
+      scatterT += (scatterTarget - scatterT) * response;
+      const eased = smoothstep(THREE.MathUtils.clamp(scatterT, 0, 1));
+
+      for (let i = 0; i < shards.length; i++) {
+        const shard = shards[i];
+        shard.position.lerpVectors(
+          shard.userData.homePosition,
+          shard.userData.explodePosition,
+          eased
+        );
+
+        const extra = new THREE.Quaternion().setFromAxisAngle(
+          shard.userData.spinAxis,
+          shard.userData.spinAmount * eased
+        );
+        shard.quaternion.copy(shard.userData.homeQuaternion).multiply(extra);
+
+        // Slightly increase transmission while the object opens up.
+        shard.material.transmission = 0.28 + eased * 0.18;
+      }
+
+      core.scale.setScalar(1 - eased * 0.16);
+      core.material.opacity = 1 - eased * 0.22;
+      core.material.transparent = eased > 0.01;
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    addEventListener("beforeunload", () => {
+      environment.dispose();
+      pmrem.dispose();
+      renderer.dispose();
+    });
+  </script>
+</body>
+</html>
