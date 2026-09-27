@@ -54,7 +54,7 @@ export async function createPhysics(pieces) {
         // instantaneous velocity. Real flight, sliding and rolling reset the
         // window. Sleep remains reversible when another collider hits a shard.
         if(!orb && age>8) for(const s of shards) {
-          if(s.body.isSleeping()) { s.restPose=null; continue; }
+          if(s.body.isSleeping()) continue;
           const p=s.body.translation(),r=s.body.rotation();
           if(!s.restPose) s.restPose={position:new Vector3().copy(p),rotation:new Quaternion().copy(r),time:0};
           const rest=s.restPose;
@@ -69,8 +69,9 @@ export async function createPhysics(pieces) {
                 if(manifold.numSolverContacts()>0) supported=true;
               });
             });
-            if(supported) s.body.sleep();
-            s.restPose=null;
+            const v=s.body.linvel(),w=s.body.angvel();
+            const kinetic=v.x*v.x+v.y*v.y+v.z*v.z+(w.x*w.x+w.y*w.y+w.z*w.z)*s.radius*s.radius;
+            if(supported && kinetic<.0016) s.body.sleep();
           }
         }
         if(orb) orb.resetTorques(false);

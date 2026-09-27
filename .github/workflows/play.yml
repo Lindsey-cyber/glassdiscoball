@@ -25,6 +25,4 @@ jobs:
         if: always()
         with:
           name: glass-play-validation
-          path: |
-            test-results/
-            dist/
+          path: test-results/

@@ -53,7 +53,7 @@ async function boot() {
     await document.fonts.ready;resize();
     mount.disabled=false;mount.dataset.ready='true';
     if(new URLSearchParams(location.search).has('debug')) {
-      window.__glass={seed,physics,view,sculpture,policy,resize, snapshot:()=>({seed,backend:view.renderer.backend.isWebGPUBackend?'webgpu':'webgl2',count:pieces.length,fractured:!physics.orb,sleeping:physics.shards.filter(s=>s.body.isSleeping()).length,ratio:policy.ratio,drawCalls:view.renderer.info.render.calls,geometries:view.renderer.info.memory.geometries})};
+      window.__glass={seed,physics,view,sculpture,policy,resize,pause:()=>{cancelAnimationFrame(raf);raf=0;last=0;},resume:wake, snapshot:()=>({seed,backend:view.renderer.backend.isWebGPUBackend?'webgpu':'webgl2',count:pieces.length,fractured:!physics.orb,sleeping:physics.shards.filter(s=>s.body.isSleeping()).length,ratio:policy.ratio,drawCalls:view.renderer.info.render.calls,geometries:view.renderer.info.memory.geometries})};
       cleanup.push(()=>delete window.__glass);
     }
     active=()=>{mount.disabled=true;delete mount.dataset.ready;cleanup.reverse().forEach(fn=>fn());active=null;};
