@@ -11,7 +11,7 @@ try {
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile,hasTouch:mobile,reducedMotion:mode==='reduced'?'reduce':'no-preference'});
   const page=await context.newPage();
   page.on('pageerror',e=>{errors.push({mode,message:e.message});console.error(mode,e.message);});
-  page.on('console',m=>{if(m.type()==='error'&&page.url().includes('/play/'))errors.push({mode,message:m.text()});});
+  page.on('console',m=>{if(['warning','error'].includes(m.type())&&page.url().includes('/play/')){console.log(mode,m.type(),m.text());if(m.type()==='error')errors.push({mode,message:m.text()});}});
   await page.goto(`${base}/`);await page.evaluate(()=>document.fonts.ready);
   const home=await page.locator('.portrait-button').boundingBox();
   // Collect Play errors separately from the homepage.

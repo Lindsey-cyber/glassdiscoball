@@ -44,19 +44,20 @@ export function createFacets(count, seed) {
       const a=k*m+j,b=k*m+(j+1)%m,c=(k+1)*m+(j+1)%m,d=(k+1)*m+j;
       emit(a,d,b); emit(b,d,c);
     }
-    const film = 270 + rng()*115;
+    const film = 290 + rng()*140;
     const silver = rng() < .23;
-    for(let j=0;j<positions.length/3;j++) optical.push(.06+rng()*0.002, film, silver ? .16 : .87, silver ? .88 : .06);
+    for(let j=0;j<positions.length/3;j++) optical.push(.06+rng()*0.002, film, silver ? 0 : .97, silver ? .99 : 0);
     // One cell uses one optical value (no grain/noise painted onto its faces).
     for(let j=4;j<optical.length;j+=4) optical[j]=optical[0];
     const geometry = new BufferGeometry();
     geometry.setAttribute('position',new Float32BufferAttribute(positions,3));
     geometry.setAttribute('optical',new Float32BufferAttribute(optical,4));
+    geometry.setAttribute('glassThickness',new Float32BufferAttribute(new Float32Array(positions.length/3).fill(thickness),1));
     geometry.computeVertexNormals();
     geometry.computeBoundingSphere();
     let area=0;
     for(let j=0;j<m;j++) { const a=polygon[j],b=polygon[(j+1)%m]; area+=a.x*b.y-b.x*a.y; }
-    return { geometry, hull: new Float32Array(hullVertices), center: origin, normal:n, area:Math.abs(area)/2, thickness, radius:geometry.boundingSphere.radius };
+    return { geometry, silver, hull: new Float32Array(hullVertices), center: origin, normal:n, area:Math.abs(area)/2, thickness, radius:geometry.boundingSphere.radius };
   });
   // Exact assembled bounding radius; map its silhouette to the portrait's diameter.
   let radius=0;

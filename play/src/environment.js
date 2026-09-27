@@ -20,6 +20,7 @@ export async function createEnvironment(renderer, scene) {
   scene.add(new HemisphereLight(0xe8f3ff,0x8b8fa2,.5));
   const key = new DirectionalLight(0xf1f7ff,2.2); key.position.set(-4,6,8); scene.add(key);
   const rim = new DirectionalLight(0xd8e7ff,1); rim.position.set(5,1,-3); scene.add(rim);
+  if(renderer.backend.device) await renderer.backend.device.queue.onSubmittedWorkDone();
   studio.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});
   generator.dispose();
   return () => { scene.environment=null; target.dispose(); };

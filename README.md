@@ -21,8 +21,7 @@ npm run test:browser
 Upload **the contents of `dist/`** to the existing static host. A build is now
 required; uploading the source folder directly will not resolve npm imports.
 The build copies the original homepage, scripts, CSS, projects, and any existing
-`images/` assets. The supplied repository does not contain its referenced image
-files: preserve those assets on the existing host. `play/glass-orb.html` redirects
+`images/` assets. `play/glass-orb.html` redirects
 to `/play/`, preserving query parameters. No production deployment is automatic.
 
 ## Architecture
@@ -82,7 +81,6 @@ Bloom is intentionally omitted to preserve small high-contrast reflections.
 
 ## Current review status
 
-Implementation is a draft pending browser validation. Local physics/build checks
-are recorded in `VALIDATION.md`. The connected GitHub integration rejected
-branch creation (403), so no remote branch, PR, workflow run, or deployment has
-been created. Do not treat the browser test script as evidence it has passed.
+Implementation is under review in PR #1. Physics and build checks pass; browser
+validation is running in GitHub Actions. Results and remaining limits are recorded
+in `VALIDATION.md`. No production deployment has been made.

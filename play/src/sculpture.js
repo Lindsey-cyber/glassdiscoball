@@ -4,7 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * material pass. Every vertex has exactly one unit weight; nothing is deformed.
  * Works identically on WebGPU and WebGL2, without hundreds of mesh submissions.
  */
-export function createSculpture(pieces,material,scene) {
+export function createSculpture(pieces,materials,scene) {
   const bones=pieces.map(()=>new Bone());
   pieces.forEach((p,i)=>{
     const n=p.geometry.attributes.position.count;
@@ -13,19 +13,22 @@ export function createSculpture(pieces,material,scene) {
     p.geometry.setAttribute('skinIndex',new Uint16BufferAttribute(indices,4));
     p.geometry.setAttribute('skinWeight',new Float32BufferAttribute(weights,4));
   });
-  const geometry=mergeGeometries(pieces.map(p=>p.geometry));
-  const mesh=new SkinnedMesh(geometry,material);
+  const partitions=[false,true].map(silver=>mergeGeometries(pieces.filter(p=>p.silver===silver).map(p=>p.geometry)));
+  const geometry=mergeGeometries(partitions,true);
+  partitions.forEach(g=>g.dispose());
+  const mesh=new SkinnedMesh(geometry,[materials.glass,materials.mirror]);
   mesh.frustumCulled=false;
   bones.forEach(b=>mesh.add(b));
   const skeleton=new Skeleton(bones); mesh.bind(skeleton);
   scene.add(mesh);
   return { mesh, bones, update(poses,scale) {
+    materials.worldScale.value=scale;
     for(let i=0;i<bones.length;i++) {
       const b=bones[i],p=poses[i];
       b.position.copy(p.position); b.quaternion.copy(p.rotation); b.scale.setScalar(scale);
     }
   }, dispose() {
-    scene.remove(mesh); geometry.dispose(); skeleton.dispose(); material.dispose();
+    scene.remove(mesh); geometry.dispose(); skeleton.dispose(); materials.glass.dispose();materials.mirror.dispose();
     pieces.forEach(p=>p.geometry.dispose());
   } };
 }

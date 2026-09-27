@@ -51,9 +51,13 @@ async function boot() {
     document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(raf);raf=0;last=0;}else wake();},{signal:events.signal});
     const observer=new ResizeObserver(resize);observer.observe(mount);cleanup.push(()=>observer.disconnect());
     await document.fonts.ready;resize();
+    cancelAnimationFrame(raf);raf=0;
+    physics.step(1/120);sculpture.update(physics.poses,physics.scale);
+    await view.renderer.compileAsync(view.scene,view.camera);
+    wake();
     mount.disabled=false;mount.dataset.ready='true';
     if(new URLSearchParams(location.search).has('debug')) {
-      window.__glass={seed,physics,view,sculpture,policy,resize,pause:()=>{cancelAnimationFrame(raf);raf=0;last=0;},resume:wake, snapshot:()=>({seed,backend:view.renderer.backend.isWebGPUBackend?'webgpu':'webgl2',count:pieces.length,fractured:!physics.orb,sleeping:physics.shards.filter(s=>s.body.isSleeping()).length,ratio:policy.ratio,drawCalls:view.renderer.info.render.calls,geometries:view.renderer.info.memory.geometries})};
+      window.__glass={seed,physics,view,sculpture,policy,resize,pause:async()=>{cancelAnimationFrame(raf);raf=0;last=0;await view.renderer.compileAsync(view.scene,view.camera);view.renderer.render(view.scene,view.camera);await view.renderer.backend.device?.queue.onSubmittedWorkDone();},resume:wake, snapshot:()=>({seed,backend:view.renderer.backend.isWebGPUBackend?'webgpu':'webgl2',count:pieces.length,fractured:!physics.orb,sleeping:physics.shards.filter(s=>s.body.isSleeping()).length,ratio:policy.ratio,drawCalls:view.renderer.info.render.calls,geometries:view.renderer.info.memory.geometries})};
       cleanup.push(()=>delete window.__glass);
     }
     active=()=>{mount.disabled=true;delete mount.dataset.ready;cleanup.reverse().forEach(fn=>fn());active=null;};
