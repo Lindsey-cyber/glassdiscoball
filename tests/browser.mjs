@@ -1,32 +1,46 @@
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
+import {PNG} from 'pngjs';
 import {mkdirSync,writeFileSync}from'node:fs';
 mkdirSync('test-results',{recursive:true});
-const browser=await chromium.launch({headless:true,args:['--enable-unsafe-webgpu','--enable-unsafe-swiftshader','--use-angle=swiftshader']});
+const browser=await chromium.launch({headless:true,args:['--enable-unsafe-webgpu','--enable-unsafe-swiftshader','--use-angle=swiftshader','--ignore-gpu-blocklist','--enable-gpu','--enable-features=Vulkan','--use-vulkan=swiftshader']});
 const reports=[],errors=[];
 const base=process.env.TEST_URL||'http://127.0.0.1:4173';
 try {
- for(const mode of ['webgl','webgpu','mobile','reduced']) {
+ for(const mode of (process.env.TEST_MODES||'webgl,webgpu,mobile,reduced,fallback').split(',')) {
   const mobile=mode==='mobile';
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile,hasTouch:mobile,reducedMotion:mode==='reduced'?'reduce':'no-preference'});
   const page=await context.newPage();
   page.on('pageerror',e=>{errors.push({mode,message:e.message});console.error(mode,e.message);});
   page.on('console',m=>{if(['warning','error'].includes(m.type())&&page.url().includes('/play/')){console.log(mode,m.type(),m.text());if(m.type()==='error')errors.push({mode,message:m.text()});}});
+  if(mode==='fallback')await page.addInitScript(()=>Object.defineProperty(navigator,'gpu',{value:undefined}));
   await page.goto(`${base}/`);await page.evaluate(()=>document.fonts.ready);
   const home=await page.locator('.portrait-button').boundingBox();
   // Collect Play errors separately from the homepage.
   errors.length=0;
-  await page.goto(`${base}/play/?debug&seed=42${mode==='webgpu'?'':'&renderer=webgl'}`);
+  await page.goto(`${base}/play/?debug&seed=42${['webgpu','fallback'].includes(mode)?'':'&renderer=webgl'}`);
   await page.waitForFunction(()=>window.__glass,{timeout:90000});
   await page.waitForTimeout(2500);
   const slot=await page.locator('#play-experience').boundingBox();
   for(const key of ['x','y','width','height'])assert.ok(Math.abs(home[key]-slot[key])<.6,`${mode} portrait mismatch: ${key} ${home[key]} / ${slot[key]}`);
   const start=await page.evaluate(()=>window.__glass.snapshot());
   console.log(mode,start);
-  async function capture(name){await page.evaluate(()=>window.__glass.pause());await page.screenshot({path:`test-results/${mode}-${name}.png`,timeout:120000});}
+  async function capture(name){
+   await page.evaluate(()=>window.__glass.pause());
+   const bytes=await page.screenshot({path:`test-results/${mode}-${name}.png`,timeout:120000});
+   if(name==='intact') {
+    const png=PNG.sync.read(bytes);let visible=0,total=0;
+    for(let y=Math.ceil(slot.y);y<slot.y+slot.height;y++)for(let x=Math.ceil(slot.x);x<slot.x+slot.width;x++) {
+     const i=(y*png.width+x)*4;total++;
+     if(Math.min(png.data[i],png.data[i+1],png.data[i+2])<235)visible++;
+    }
+    assert.ok(visible/total>.08,`${mode}: sculpture is absent from the rendered pixels (${visible}/${total})`);
+    assert.ok(png.data[0]>248&&png.data[1]>248&&png.data[2]>248,'background must remain white');
+   }
+  }
   await capture('intact');
   await page.evaluate(()=>window.__glass.resume());
-  if(mode==='webgl')assert.equal(start.backend,'webgl2');
+  if(['webgl','fallback'].includes(mode))assert.equal(start.backend,'webgl2');
   if(mode==='webgpu')assert.equal(start.backend,'webgpu');
   if(mode==='reduced') {
    assert.equal(await page.evaluate(()=>Math.hypot(...Object.values(window.__glass.physics.orb.angvel()))),0);
@@ -36,7 +50,7 @@ try {
    assert.equal(await page.evaluate(()=>window.__glass.snapshot().fractured),false);
    assert.ok(await page.evaluate(()=>Math.hypot(...Object.values(window.__glass.physics.orb.angvel())))>.1);
   }
-  await page.locator('#play-experience').click();
+  if(mobile)await page.locator('#play-experience').tap();else await page.locator('#play-experience').click();
   await page.waitForTimeout(400);
   await capture('fracture');
   assert.equal(await page.evaluate(()=>window.__glass.snapshot().fractured),true);
@@ -56,9 +70,12 @@ try {
    assert.equal(await page.evaluate(()=>window.__glass.physics.boundaries.bounds.halfWidth),3.2);
    await capture('resize');
   }
-  await page.goto(base+'/');await page.goBack();await page.waitForFunction(()=>window.__glass,{timeout:90000});
-  assert.equal(await page.locator('.play-canvas').count(),1);
-  assert.equal(await page.evaluate(()=>window.__glass.snapshot().fractured),false);
+  for(let visit=0;visit<3;visit++) {
+   await page.goto(base+'/');await page.goBack();await page.waitForFunction(()=>window.__glass,{timeout:90000});
+   await page.evaluate(()=>window.__glass.pause());
+   assert.equal(await page.locator('.play-canvas').count(),1);
+   assert.equal(await page.evaluate(()=>window.__glass.snapshot().fractured),false);
+  }
   reports.push({mode,start,settled:result.snapshot,errors:[...errors]});
   await context.close();
  }

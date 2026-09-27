@@ -3,17 +3,20 @@ import { Scene, Color, Mesh, BoxGeometry, MeshBasicMaterial, BackSide, PMREMGene
 export async function createEnvironment(renderer, scene) {
   const studio = new Scene();
   studio.background = new Color(.055,.065,.082);
-  const room = new Mesh(new BoxGeometry(24,20,24),new MeshBasicMaterial({color:0x59616f,side:BackSide}));
+  const room = new Mesh(new BoxGeometry(24,20,24),new MeshBasicMaterial({color:0xc4cbd4,side:BackSide}));
   studio.add(room);
   function softbox(position,scale,color,intensity) {
     const m = new Mesh(new BoxGeometry(...scale),new MeshBasicMaterial({color:new Color(color).multiplyScalar(intensity)}));
     m.position.set(...position); m.lookAt(0,0,0); studio.add(m);
   }
-  softbox([-5,5,5],[3,8,.1], '#f2f6ff', 10);
-  softbox([6,2,3],[1.1,7,.1], '#c7e6ff', 6);
-  softbox([0,8,-3],[7,2,.1], '#ffffff', 8);
-  softbox([-4,-2,-6],[3,4,.1], '#b9c9e8', 3);
-  softbox([5,-3,-5],[1.4,4,.1], '#d9cdec', 2);
+  softbox([-5,5,5],[3,8,.1], '#f2f6ff', 4);
+  softbox([6,2,3],[1.1,7,.1], '#a9d8f4', 2.2);
+  softbox([0,8,-3],[7,2,.1], '#ffffff', 3);
+  softbox([-4,-2,-6],[3,4,.1], '#bac9f0', 1.8);
+  softbox([5,-3,-5],[1.4,4,.1], '#cbb7e6', 1.4);
+  // Negative-fill cards give polished glass crisp, moving dark reflections.
+  softbox([4,0,6],[1.8,9,.1], '#111823', .25);
+  softbox([-6,1,-2],[1,8,.1], '#1c2330', .3);
   const generator = new PMREMGenerator(renderer);
   const target = generator.fromScene(studio, .025, .1, 40, { size:256 });
   scene.environment = target.texture;
