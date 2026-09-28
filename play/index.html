@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ffffff">
+<title>Play · Lindsey Ma</title>
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../stylesheet.css">
+<link rel="stylesheet" href="./play.css">
+</head>
+<body class="play-page">
+<a class="play-link play-home" href="../" aria-label="Back home" title="Back home">↓</a>
+<main class="site-shell">
+  <header class="intro">
+      <div class="intro-copy" aria-hidden="true" inert>
+        <h1 id="name-easter-egg" tabindex="0" role="button" aria-label="Lindsey Ma, 马兰馨 — click for a small confetti effect">
+          Lindsey Ma <span lang="zh-CN">马兰馨</span>
+        </h1>
+
+        <p>
+          I'm a Columbia University Statistics graduate, with a focus on computer vision. I also love biking and hiking.
+        </p>
+
+        <p>
+          I received my M.S. in Statistics from <a href="https://www.columbia.edu/" target="_blank" rel="noreferrer">Columbia University</a>
+          and my B.A. in Economics from <a href="https://en.ruc.edu.cn/" target="_blank" rel="noreferrer">Renmin University of China</a>.
+        </p>
+
+        <nav class="profile-links" aria-label="Profile links">
+          <a href="mailto:lm3879@columbia.edu">Email</a>
+          <span>/</span>
+          <a href="https://storage.googleapis.com/www.lindseyma.com/assets/Lindsey-Ma-CV.pdf" target="_blank" rel="noreferrer">CV</a>
+          <span>/</span>
+          <a href="https://github.com/Lindsey-cyber" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </div>
+
+
+    <div class="intro-photo">
+      <button id="play-experience" class="portrait-button" type="button" aria-label="Mirror disco ball. Drag to spin, click or press Enter to fracture." disabled></button>
+      <p class="play-caption">A playground for physics, light and glass.</p>
+      <div class="play-controls" role="group" aria-label="Lighting">
+        <button type="button" data-lighting="default" aria-pressed="true">Default</button>
+        <button type="button" data-lighting="sunset" aria-pressed="false">Warm Sunset</button>
+        <button type="button" data-lighting="night" aria-pressed="false">Night Spotlight</button>
+        <button type="button" data-lighting="neon" aria-pressed="false">Neon Mix</button>
+      </div>
+    </div>
+  </header>
+</main>
+<p id="play-status" role="status" class="sr-only"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
