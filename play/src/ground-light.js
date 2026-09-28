@@ -1,5 +1,5 @@
-import { Vector3, Matrix4, Quaternion, Color, PlaneGeometry, InstancedMesh, Mesh, MeshBasicNodeMaterial, AdditiveBlending, DoubleSide, DynamicDrawUsage } from 'three/webgpu';
-import { uv, float, smoothstep, uniform } from 'three/tsl';
+import { Vector3, Matrix4, Quaternion, Color, PlaneGeometry, InstancedMesh, Mesh, MeshBasicNodeMaterial, CustomBlending, SrcAlphaFactor, OneFactor, ZeroFactor, DoubleSide, DynamicDrawUsage, InstancedBufferAttribute } from 'three/webgpu';
+import { uv, float, smoothstep, uniform, attribute } from 'three/tsl';
 
 /** Single-bounce specular transport. Each deposit is the intersection of a
  * real mirror-reflected lamp ray with the receiver, broadened by finite emitter
@@ -10,12 +10,14 @@ export function createGroundLight(scene,tiles) {
   const strength=uniform(.16);
   const baseMaterial=new MeshBasicNodeMaterial({color:0x82868c,transparent:true,depthWrite:false,side:DoubleSide,toneMapped:false});
   const edge=uv().sub(.5).mul(2).length();
-  baseMaterial.opacityNode=smoothstep(float(1),float(.16),edge).mul(strength);
+  baseMaterial.opacityNode=smoothstep(float(.16),float(1),edge).oneMinus().mul(strength);
   const surface=new Mesh(new PlaneGeometry(1,1),baseMaterial);surface.quaternion.copy(orientation);surface.renderOrder=-1;scene.add(surface);
-  const lightMaterial=new MeshBasicNodeMaterial({transparent:true,depthWrite:false,blending:AdditiveBlending,side:DoubleSide,toneMapped:false});
+  const lightMaterial=new MeshBasicNodeMaterial({transparent:true,depthWrite:false,blending:CustomBlending,blendSrc:SrcAlphaFactor,blendDst:OneFactor,blendSrcAlpha:ZeroFactor,blendDstAlpha:OneFactor,side:DoubleSide,toneMapped:false});
   const r=uv().sub(.5).mul(2).length();
-  lightMaterial.opacityNode=r.mul(r).mul(-5).exp().mul(smoothstep(float(1),float(.72),r));
-  const deposits=new InstancedMesh(new PlaneGeometry(1,1),lightMaterial,tiles.length*3);
+  lightMaterial.opacityNode=r.mul(r).mul(-5).exp().mul(smoothstep(float(.72),float(1),r).oneMinus()).mul(attribute('depositPower','float'));
+  const depositGeometry=new PlaneGeometry(1,1),powerAttribute=new InstancedBufferAttribute(new Float32Array(tiles.length*3),1);
+  powerAttribute.setUsage(DynamicDrawUsage);depositGeometry.setAttribute('depositPower',powerAttribute);
+  const deposits=new InstancedMesh(depositGeometry,lightMaterial,tiles.length*3);
   deposits.instanceMatrix.setUsage(DynamicDrawUsage);deposits.frustumCulled=false;deposits.renderOrder=2;deposits.count=0;scene.add(deposits);
   const p=new Vector3(),n=new Vector3(),toLight=new Vector3(),ray=new Vector3(),hit=new Vector3(),delta=new Vector3(),s=new Vector3(),matrix=new Matrix4(),color=new Color();
   let scale=1,width=1,height=1,lastCount=0;
@@ -46,9 +48,9 @@ export function createGroundLight(scene,tiles) {
         const power=Math.min(.8,irradiance*incidence*cosine*tile.area*scale*scale/(a*b)*settings.projection*(1-edge)**2);
         if(power<.00008)continue;
         hit.addScaledVector(normal,.003);s.set(a*2.8,b*2.8,1);matrix.compose(hit,orientation,s);deposits.setMatrixAt(count,matrix);
-        color.copy(source.color).multiplyScalar(power);deposits.setColorAt(count,color);count++;
+        color.copy(source.color);deposits.setColorAt(count,color);powerAttribute.setX(count,power);count++;
       }
     }
-    deposits.count=count;lastCount=count;deposits.instanceMatrix.needsUpdate=true;if(deposits.instanceColor)deposits.instanceColor.needsUpdate=true;
+    deposits.count=count;lastCount=count;powerAttribute.needsUpdate=true;deposits.instanceMatrix.needsUpdate=true;if(deposits.instanceColor)deposits.instanceColor.needsUpdate=true;
   },get count(){return lastCount;},dispose(){scene.remove(surface,deposits);surface.geometry.dispose();baseMaterial.dispose();deposits.geometry.dispose();lightMaterial.dispose();deposits.dispose();}};
 }

@@ -1,4 +1,4 @@
-import { Scene, Color, Mesh, BoxGeometry, MeshBasicMaterial, BackSide, PMREMGenerator, SpotLight, HemisphereLight, Vector3 } from 'three/webgpu';
+import { Scene, Color, Mesh, BoxGeometry, MeshBasicMaterial, BackSide, FrontSide, PMREMGenerator, SpotLight, HemisphereLight, Vector3 } from 'three/webgpu';
 
 // Radiance sources and direct lamps describe the same rooms. Materials never
 // change color when a preset changes. Positions are in ball-radius units.
@@ -35,7 +35,7 @@ export async function createEnvironment(renderer,scene) {
     const ticket=++revision,data=LIGHTING_PRESETS[name],studio=new Scene();
     const owned=[];
     function box(position,size,color,intensity=1,side){
-      const material=new MeshBasicMaterial({color:new Color(color).multiplyScalar(intensity),side});
+      const material=new MeshBasicMaterial({color:new Color(color).multiplyScalar(intensity),side:side??FrontSide});
       const mesh=new Mesh(new BoxGeometry(...size),material);mesh.position.set(...position);studio.add(mesh);owned.push(mesh);return mesh;
     }
     box([0,0,0],[22,18,22],data.room,1,BackSide);
@@ -50,6 +50,12 @@ export async function createEnvironment(renderer,scene) {
           const m=box(p.toArray(),[w/3*.94,h/2*.94,.025],color,radiance*(.83+ix*.06+iy*.025));m.lookAt(0,0,0);
         }
       }else{const m=box([x,y,z],[w,h,.025],color,radiance);m.lookAt(0,0,0);}
+    }
+    // Narrow architectural elements break broad room reflections into crisp
+    // alternating silver/charcoal facets without coloring the mirror material.
+    for(let i=0;i<11;i++){
+      const x=-6+i*1.12,z=8.5,h=3.4+(i%3)*1.05;
+      box([x,(i%2)*.45,z],[.10+(i%3)*.09,h,.12],i%3===0?'#c8cbd0':'#10141a',name==='default'?.75:.30);
     }
     const generator=new PMREMGenerator(renderer),next=generator.fromScene(studio,0,.1,40,{size:256});
     if(renderer.backend.device)await renderer.backend.device.queue.onSubmittedWorkDone();

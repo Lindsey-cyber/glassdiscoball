@@ -11,12 +11,14 @@ export function createMirrorTiles(pieces, seed, bands=60) {
   const axis=new Vector3(),tilt=new Quaternion();
   function solid(target,roughnessTarget,center,u,v,n,w,h,depth,bevel,roughness) {
     const ring=[];
-    for(const [inset,z] of [[bevel,depth/2],[0,depth/2-bevel],[0,-depth/2+bevel],[bevel,-depth/2]]) {
+    const levels=bevel?[[bevel,depth/2],[0,depth/2-bevel],[0,-depth/2]]:[[0,depth/2],[0,-depth/2]];
+    for(const [inset,z] of levels) {
       for(const [x,y] of [[-1,-1],[1,-1],[1,1],[-1,1]])ring.push(center.clone().addScaledVector(u,x*(w/2-inset)).addScaledVector(v,y*(h/2-inset)).addScaledVector(n,z));
     }
     function tri(a,b,c){for(const i of [a,b,c]){target.push(...ring[i].toArray());roughnessTarget.push(roughness);}}
-    tri(0,1,2);tri(0,2,3);tri(12,14,13);tri(12,15,14);
-    for(let k=0;k<3;k++)for(let j=0;j<4;j++){const a=k*4+j,b=k*4+(j+1)%4,c=(k+1)*4+(j+1)%4,d=(k+1)*4+j;tri(a,d,b);tri(b,d,c);}
+    const back=(levels.length-1)*4;
+    tri(0,1,2);tri(0,2,3);tri(back,back+2,back+1);tri(back,back+3,back+2);
+    for(let k=0;k<levels.length-1;k++)for(let j=0;j<4;j++){const a=k*4+j,b=k*4+(j+1)%4,c=(k+1)*4+(j+1)%4,d=(k+1)*4+j;tri(a,d,b);tri(b,d,c);}
   }
   for(let row=0;row<bands;row++) {
     const theta=Math.PI*(row+.5)/bands;
@@ -29,14 +31,14 @@ export function createMirrorTiles(pieces, seed, bands=60) {
       for(let i=0;i<pieces.length;i++){const dot=radial.dot(pieces[i].normal);if(dot>best){best=dot;parent=i;}}
       const n=radial.clone(),u=new Vector3(-Math.sin(phi),0,Math.cos(phi)),v=new Vector3().crossVectors(n,u);
       axis.copy(u).multiplyScalar(rng.normal()).addScaledVector(v,rng.normal()).normalize();
-      tilt.setFromAxisAngle(axis,rng.normal()*.0055);n.applyQuaternion(tilt);u.applyQuaternion(tilt);v.applyQuaternion(tilt);
+      tilt.setFromAxisAngle(axis,rng.normal()*.018);n.applyQuaternion(tilt);u.applyQuaternion(tilt);v.applyQuaternion(tilt);
       const w=2*Math.sin(Math.PI/columns)*Math.sin(theta)*(.971-rng()*.012);
       const h=2*Math.sin(Math.PI/(2*bands))*(.974-rng()*.012);
       const center=radial.clone().multiplyScalar(.995).sub(pieces[parent].center);
       const glassCenter=center.clone().addScaledVector(n,.006);
       const b=buffers[parent];
       const roughness=.052+rng()*.028;
-      solid(b.silver,b.silverR,center,u,v,n,w,h,.008,.001,roughness);
+      solid(b.silver,b.silverR,center,u,v,n,w,h,.008,0,roughness);
       solid(b.glass,b.glassR,glassCenter,u,v,n,w*.998,h*.998,.006,.0011,.026+rng()*.012);
       const position=center.clone().addScaledVector(n,.009);
       tiles.push({parent,position,normal:n,u,v,width:w,height:h,area:w*h});
