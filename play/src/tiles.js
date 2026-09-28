@@ -45,8 +45,14 @@ export function createMirrorTiles(pieces,seed,bands=60) {
       const w=2*Math.sin(Math.PI/columns)*Math.sin(theta)*(.971-rng()*.012),h=2*Math.sin(Math.PI/(2*bands))*(.974-rng()*.012);
       sourceArea+=w*h;
       const center=radial.clone().multiplyScalar(.995),corners=[{x:-w/2,y:-h/2},{x:w/2,y:-h/2},{x:w/2,y:h/2},{x:-w/2,y:h/2}];
-      const parents=new Set([owner(center)]);
-      for(const p of corners)parents.add(owner(point.copy(center).addScaledVector(u,p.x).addScaledVector(v,p.y)));
+      const nearest=owner(center),parents=new Set([nearest]);
+      // Include every cell whose bisector can intersect the tile rectangle.
+      // Corner ownership alone misses tiny portions near triple junctions.
+      for(let j=0;j<pieces.length;j++){
+        if(j===nearest)continue;
+        point.subVectors(pieces[nearest].normal,pieces[j].normal);
+        if(point.dot(center)-Math.abs(point.dot(u))*w/2-Math.abs(point.dot(v))*h/2<=1e-10)parents.add(j);
+      }
       const roughness=.052+rng()*.028,glassR=.026+rng()*.012;
       for(const parent of parents){
         let polygon=corners;

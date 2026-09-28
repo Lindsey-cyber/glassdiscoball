@@ -10,7 +10,7 @@ test('dense mirror solids retain coverage and bind their cut edges to physical c
   assert.equal(visual.tileCount,4590);
   assert.ok(visual.tiles.length>visual.tileCount,'tiles crossing a fracture boundary must be split');
   const area=visual.tiles.reduce((sum,t)=>sum+t.area,0);
-  assert.ok(Math.abs(area-visual.sourceArea)/visual.sourceArea<.001,'fracture cuts must not remove visible surface');
+  assert.ok(Math.abs(area-visual.sourceArea)/visual.sourceArea<.000001,'fracture cuts must not remove visible surface');
   for(const t of visual.tiles){
    const p=t.position.clone().add(pieces[t.parent].center);
    const distance=p.dot(pieces[t.parent].normal);
