@@ -1,8 +1,9 @@
-import { WebGPURenderer, Scene, OrthographicCamera, Color, ACESFilmicToneMapping } from 'three/webgpu';
+import { WebGPURenderer, Scene, OrthographicCamera, ACESFilmicToneMapping } from 'three/webgpu';
 export const PIXELS_PER_UNIT = 100;
 export async function createRenderer() {
   const forceWebGL = new URLSearchParams(location.search).get('renderer') === 'webgl';
   const renderer = new WebGPURenderer({ antialias:true, alpha:true, forceWebGL, powerPreference:'high-performance' });
+  renderer.info.autoReset=false;
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.toneMappingExposure = .86;
   renderer.setClearColor(0xffffff,0);
@@ -16,7 +17,7 @@ export async function createRenderer() {
   // Orthographic projection makes all six container boundaries exact at every depth.
   const camera = new OrthographicCamera(-1,1,1,-1,.1,50);
   camera.position.z=15;
-  return { renderer, scene, camera, resize(width,height,ratio) {
+  return { renderer, scene, camera, render() { renderer.info.reset();renderer.render(scene,camera); }, resize(width,height,ratio) {
     renderer.setPixelRatio(ratio); renderer.setSize(width,height);
     camera.left=-width/(2*PIXELS_PER_UNIT); camera.right=-camera.left;
     camera.top=height/(2*PIXELS_PER_UNIT); camera.bottom=-camera.top; camera.updateProjectionMatrix();

@@ -38,6 +38,7 @@ try {
     assert.ok(png.data[0]>248&&png.data[1]>248&&png.data[2]>248,'background must remain white');
    }
   }
+  assert.ok(start.tiles>3500);
   await capture('intact');
   await page.evaluate(()=>window.__glass.resume());
   if(['webgl','fallback'].includes(mode))assert.equal(start.backend,'webgl2');
@@ -50,16 +51,32 @@ try {
    assert.equal(await page.evaluate(()=>window.__glass.snapshot().fractured),false);
    assert.ok(await page.evaluate(()=>Math.hypot(...Object.values(window.__glass.physics.orb.angvel())))>.1);
   }
+  await page.evaluate(()=>window.__glass.pause());
+  await capture('rotating');
+  if(mode==='webgpu') {
+   for(const preset of ['sunset','night','neon','default']) {
+    await page.locator(`[data-lighting="${preset}"]`).click();
+    await page.waitForFunction(name=>window.__glass.environment.name===name,preset);
+    await capture(`preset-${preset}`);
+    assert.equal(await page.evaluate(()=>window.__glass.sculpture.mesh.material[0].color.getHexString()),'f4f5f6');
+   }
+  }
   if(mobile)await page.locator('#play-experience').tap();else await page.locator('#play-experience').click();
   await page.waitForTimeout(400);
   await capture('fracture');
   assert.equal(await page.evaluate(()=>window.__glass.snapshot().fractured),true);
+  await page.evaluate(()=>{
+   const {physics,sculpture,view,ground,environment}=window.__glass;
+   for(let i=0;i<84;i++)physics.step(1/120);
+   sculpture.update(physics.poses,physics.scale);ground.update(physics.poses,environment);view.render();
+  });
+  await capture('tumbling');
   // Integrate a fixed simulated interval; GPU software rasterization is not an
   // appropriate wall-clock FPS benchmark, but the same renderer remains active.
   const result=await page.evaluate(()=>{
-   const {physics,sculpture,view}=window.__glass;
+   const {physics,sculpture,view,ground,environment}=window.__glass;
    for(let i=0;i<120*40;i++)physics.step(1/120);
-   sculpture.update(physics.poses,physics.scale);view.renderer.render(view.scene,view.camera);
+   sculpture.update(physics.poses,physics.scale);ground.update(physics.poses,environment);view.render();
    return {snapshot:window.__glass.snapshot(),bounds:physics.boundaries.bounds,positions:physics.shards.map(s=>s.body.translation())};
   });
   await capture('settled');
@@ -79,6 +96,7 @@ try {
   reports.push({mode,start,settled:result.snapshot,errors:[...errors]});
   await context.close();
  }
+ console.log(JSON.stringify(reports,null,2));
  writeFileSync('test-results/report.json',JSON.stringify(reports,null,2));
  assert.ok(reports.every(r=>r.errors.length===0),JSON.stringify(reports.map(r=>r.errors)));
 } catch(error) {

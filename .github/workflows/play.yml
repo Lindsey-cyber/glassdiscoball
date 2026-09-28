@@ -5,15 +5,25 @@ on:
 permissions:
   contents: read
 jobs:
-  validate:
+  physics:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+        with: {node-version: 22, cache: npm}
+      - run: npm ci
+      - run: npm test
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [webgl, webgpu, mobile, reduced, fallback]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22, cache: npm}
       - run: npm ci
       - run: npm run build
       - run: npx playwright install --with-deps chromium
@@ -21,9 +31,10 @@ jobs:
       - run: |
           npm run preview -- --host 127.0.0.1 --port 4173 &
           xvfb-run -a -s '-screen 0 1440x900x24' npm run test:browser
-      - run: npm test
+        env:
+          TEST_MODES: ${{ matrix.mode }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: glass-play-validation
+          name: mirror-play-${{ matrix.mode }}
           path: test-results/

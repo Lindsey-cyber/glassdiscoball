@@ -16,6 +16,8 @@ npm run preview
 # One-time browser installation for the end-to-end checks:
 npx playwright install chromium
 npm run test:browser
+# On Linux CI, WebGPU canvas compositing also needs an X display:
+xvfb-run -a -s '-screen 0 1440x900x24' npm run test:browser
 ```
 
 Upload **the contents of `dist/`** to the existing static host. A build is now
@@ -30,11 +32,13 @@ to `/play/`, preserving query parameters. No production deployment is automatic.
 - `geometry.js`: spherical Voronoi dual of jittered Delaunay vertices; closed,
   irregular polygonal prisms, genuine bevels, per-facet optical attributes.
 - `material.js`: MeshPhysicalNodeMaterial + TSL attributes; transmission, IOR,
-  absorption, thin-film iridescence, dispersion and silver-coated facets.
+  absorption, thin-film iridescence, dispersion and silver-coated facets. Physical
+  optical thickness follows each solid and its world scale.
 - `environment.js`: HDR studio softboxes, PMREM convolution and direct lights.
 - `sculpture.js`: one GPU bone transform per rigid solid. All vertices have exactly
   one unit skin weight, so this is rigid transformation, never elastic skinning.
-  One shared geometry/material avoids hundreds of separate draw submissions.
+  One shared geometry, two material groups (glass and silver) avoid hundreds of
+  separate draw submissions. Silver enters the transmission buffer before glass.
 - `physics.js`: fixed 120 Hz Rapier simulation, mass/inertia, torque impulses,
   interpolated rendering, damping, CCD, contact-supported, sustained subpixel-rest sleep.
 - `fracture.js`: off-center pressure pulse, log-normal impulse mixture, sparse
@@ -67,8 +71,10 @@ There is no continuous background rendering after every body sleeps.
 
 `npm test` checks closed hulls, winding, irregularity, reproducibility, torque
 inertia, floor rebound, containment, sleep and viewport resizing. The PR workflow
-also builds and runs Chromium checks on WebGPU/WebGL2, mobile, reduced motion,
-layout alignment, re-entry, and screenshots. Software GPU test timing is not a
+also builds and runs Chromium checks on WebGPU/WebGL2, automatic fallback, mobile
+touch, reduced motion, layout alignment, repeated re-entry, and actual rendered
+pixels. The Linux job installs Xvfb/Mesa and enables Vulkan compositing; this is
+necessary for WebGPU screenshots, not a production-browser requirement. Software GPU test timing is not a
 claim of 60 FPS on hardware; profile on target devices before publishing.
 
 ## Rendering limits
