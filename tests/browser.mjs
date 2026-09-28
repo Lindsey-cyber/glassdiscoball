@@ -9,7 +9,7 @@ const base=process.env.TEST_URL||'http://127.0.0.1:4173';
 try {
  for(const mode of (process.env.TEST_MODES||'webgl,webgpu,mobile,reduced,fallback').split(',')) {
   const mobile=mode==='mobile';
-  const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},isMobile:mobile,hasTouch:mobile,reducedMotion:mode==='reduced'?'reduce':'no-preference'});
+  const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:900},deviceScaleFactor:mode==='webgpu'||mobile?2:1,isMobile:mobile,hasTouch:mobile,reducedMotion:mode==='reduced'?'reduce':'no-preference'});
   const page=await context.newPage();page.setDefaultTimeout(120000);
   page.on('pageerror',e=>{errors.push({mode,message:e.message});console.error(mode,e.message);});
   page.on('console',m=>{if(['warning','error'].includes(m.type())&&page.url().includes('/play/')){console.log(mode,m.type(),m.text());if(m.type()==='error')errors.push({mode,message:m.text()});}});
@@ -29,8 +29,8 @@ try {
    await page.evaluate(()=>window.__glass.pause());
    const bytes=await page.screenshot({path:`test-results/${mode}-${name}.png`,timeout:120000});
    if(name==='intact') {
-    const png=PNG.sync.read(bytes);let visible=0,total=0;
-    for(let y=Math.ceil(slot.y);y<slot.y+slot.height;y++)for(let x=Math.ceil(slot.x);x<slot.x+slot.width;x++) {
+    const png=PNG.sync.read(bytes),dpr=png.width/(mobile?390:1440);let visible=0,total=0;
+    for(let y=Math.ceil(slot.y*dpr);y<(slot.y+slot.height)*dpr;y++)for(let x=Math.ceil(slot.x*dpr);x<(slot.x+slot.width)*dpr;x++) {
      const i=(y*png.width+x)*4;total++;
      if(Math.min(png.data[i],png.data[i+1],png.data[i+2])<235)visible++;
     }
@@ -50,6 +50,12 @@ try {
    await page.mouse.move(slot.x+slot.width*.85,slot.y+slot.height*.65,{steps:8});await page.mouse.up();
    assert.equal(await page.evaluate(()=>window.__glass.snapshot().fractured),false);
    assert.ok(await page.evaluate(()=>Math.hypot(...Object.values(window.__glass.physics.orb.angvel())))>.1);
+  }
+  if(mode==='webgpu') {
+   const before=await page.evaluate(()=>window.__glass.physics.orb.rotation().w);
+   await page.evaluate(()=>window.__glass.resume());
+   await page.waitForFunction(w=>Math.abs(window.__glass.physics.orb.rotation().w-w)>.0001,before);
+   await page.evaluate(()=>window.__glass.pause());
   }
   await page.evaluate(()=>window.__glass.advance(.45));
   await capture('rotating');
@@ -71,6 +77,14 @@ try {
    sculpture.update(physics.poses,physics.scale);ground.update(physics.poses,environment);view.render();
   });
   await capture('tumbling');
+  if(mode==='webgpu') {
+   for(const preset of ['night','neon']) {
+    await page.evaluate(name=>window.__glass.setPreset(name),preset);
+    await page.evaluate(()=>window.__glass.advance(.08));
+    await capture(`tumbling-${preset}`);
+   }
+   await page.evaluate(()=>window.__glass.setPreset('default'));
+  }
   // Integrate a fixed simulated interval; GPU software rasterization is not an
   // appropriate wall-clock FPS benchmark, but the same renderer remains active.
   const result=await page.evaluate(()=>{

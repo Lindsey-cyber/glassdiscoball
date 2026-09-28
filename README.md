@@ -31,8 +31,8 @@ friction, rolling, supported sleep and viewport resize boundaries.
 `tiles.js` adds 4,590 actual mirror tiles on desktop and 3,722 on mobile, roughly
 2,295 / 1,861 facing the viewer. Every tile has a silver backing and a separate
 bevelled glass cap. Narrow seams, modest size variation and small installation
-angle errors make a manufactured mosaic. Tiles follow their nearest existing
-physical fragment; there are still only 150–340 dynamic bodies. The rendering
+angle errors make a manufactured mosaic. Tiles are clipped against the existing collider-cell boundaries, so fracture
+edges cut cleanly across the tiny mirrors instead of producing stair-step patches; there are still only 150–340 dynamic bodies. The rendering
 cluster and convex collider are intentionally separate representations.
 
 `sculpture.js` batches all tiles into one rigid bone palette and two material
