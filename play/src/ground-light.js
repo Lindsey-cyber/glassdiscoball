@@ -23,7 +23,7 @@ export function createGroundLight(scene,tiles) {
   let scale=1,width=1,height=1,lastCount=0;
   return {place(center,radius,viewportHeight,fractured){
     scale=radius;origin.set(center.x,fractured?-viewportHeight/2+.08:center.y-radius*1.23,0);
-    width=radius*5.6;height=radius*4.2;
+    width=radius*4.9;height=radius*2.8;
     surface.position.copy(origin);surface.scale.set(width,height,1);
   },update(poses,environment){
     const settings=environment.settings;strength.value=settings.ground;

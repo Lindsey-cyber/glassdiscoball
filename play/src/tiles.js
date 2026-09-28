@@ -31,7 +31,7 @@ export function createMirrorTiles(pieces, seed, bands=60) {
       for(let i=0;i<pieces.length;i++){const dot=radial.dot(pieces[i].normal);if(dot>best){best=dot;parent=i;}}
       const n=radial.clone(),u=new Vector3(-Math.sin(phi),0,Math.cos(phi)),v=new Vector3().crossVectors(n,u);
       axis.copy(u).multiplyScalar(rng.normal()).addScaledVector(v,rng.normal()).normalize();
-      tilt.setFromAxisAngle(axis,rng.normal()*.018);n.applyQuaternion(tilt);u.applyQuaternion(tilt);v.applyQuaternion(tilt);
+      tilt.setFromAxisAngle(axis,rng.normal()*.025);n.applyQuaternion(tilt);u.applyQuaternion(tilt);v.applyQuaternion(tilt);
       const w=2*Math.sin(Math.PI/columns)*Math.sin(theta)*(.971-rng()*.012);
       const h=2*Math.sin(Math.PI/(2*bands))*(.974-rng()*.012);
       const center=radial.clone().multiplyScalar(.995).sub(pieces[parent].center);

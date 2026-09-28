@@ -1,9 +1,10 @@
-# Lindsey Ma · Glass Play
+# Lindsey Ma · Mirror Play
 
-The academic homepage is preserved. `/play/` is a real-time glass sculpture
-built with Three.js 0.186.1 and Rapier 3D 0.19.3, with no remote runtime CDN.
+The existing homepage is preserved. `/play/` contains a physically rotating and
+breakable silver mirror ball, rendered with Three.js 0.186.1 and simulated with
+Rapier 3D 0.19.3. No runtime graphics CDN or image-based ball is used.
 
-## Run / publish
+## Run and build
 
 Node 22+:
 
@@ -13,80 +14,94 @@ npm run dev
 npm test
 npm run build
 npm run preview
-# One-time browser installation for the end-to-end checks:
-npx playwright install chromium
+```
+
+Deploy the contents of `dist/` to the existing static host. The build preserves
+original homepage CSS, JS, images, documents and project pages. The homepage's
+only HTML change is the relative Play link. No automatic production deployment
+is configured. The old `/play/glass-orb.html` URL redirects to `/play/`.
+
+## Construction and physics
+
+`geometry.js`, `physics.js`, `fracture.js`, `boundaries.js` and `interaction.js`
+preserve the original convex-fragment simulation: velocity-driven torque,
+mass/inertia, 120 Hz fixed steps, CCD, varied impulses, collisions, restitution,
+friction, rolling, supported sleep and viewport resize boundaries.
+
+`tiles.js` adds 4,590 actual mirror tiles on desktop and 3,722 on mobile, roughly
+2,295 / 1,861 facing the viewer. Every tile has a silver backing and a separate
+bevelled glass cap. Narrow seams, modest size variation and small installation
+angle errors make a manufactured mosaic. Tiles follow their nearest existing
+physical fragment; there are still only 150–340 dynamic bodies. The rendering
+cluster and convex collider are intentionally separate representations.
+
+`sculpture.js` batches all tiles into one rigid bone palette and two material
+groups. Each vertex has exactly one unit skin weight. No tile deforms, and no
+rotation is animated separately from its Rapier rigid body. Thousands of tiles
+do not become thousands of draw calls or colliders.
+
+`material.js` models neutral, opaque silver beneath thin refractive glass:
+metallic reflection, low nonzero roughness, IOR 1.52, actual thickness, bevels,
+Fresnel and minimal dispersion. There is no rainbow coating or preset tint.
+
+## Lighting
+
+`environment.js` builds a real 3D room with window panes, mullions, neutral
+surfaces, negative fill and luminous strips. PMREM is generated from this scene
+at runtime when the preset changes. Reflection lookup and PBR shading respond
+to current tile normals on every frame, including after fracture. Direct lamps
+and the reflected room use corresponding positions and colors.
+
+- **Default:** broad divided daylight windows and quiet neutral room contrast.
+- **Warm Sunset:** low golden light, cooler fill and elongated sources.
+- **Night Spotlight:** low ambience, a small intense white source and narrow rim.
+- **Neon Mix:** spatially separate cyan, magenta and neutral-white sources.
+
+`ground-light.js` computes single-bounce specular transport from each lamp via
+actual tile positions/normals to a faint tilted receiving surface. Intersection,
+incidence, distance falloff, finite-source spread, receiver angle and footprint
+area determine each deposit. The field has no clock, random sparkle, static
+projection texture or canned motion. Light is added without accumulating opaque
+coverage over the white webpage.
+
+This is a raster PBR experiment, not a full path tracer: screen-space glass
+transmission does not recursively refract every overlapping shard. The receiving
+field approximates finite-area-source transport and omits inter-shard occlusion
+and multiple bounces. Collider clusters approximate groups of small glass tiles.
+
+## Layout, lifecycle and quality
+
+The original `.site-shell / .intro / .intro-photo / .portrait-button` controls
+position and size. Hidden intro copy preserves the homepage header's exact
+metrics. Update both intro copies together if homepage text changes. A short
+caption and four small lighting buttons are the only added visible content.
+
+`renderer.js` uses WebGPU with automatic WebGL2 fallback. A transparent canvas
+keeps the page white without exposing the background to tone mapping. Both
+backends use the same geometry and PBR models. Pixel ratio adapts to frame time;
+tile density stays intact. Reduced motion stops idle rotation and spin gestures,
+while an explicit tap still fractures with a much smaller impulse. Page hiding,
+resize and repeated visits clean up/rebuild their resources.
+
+## Validation and reproducibility
+
+`/play/?debug&seed=42&renderer=webgl` forces WebGL2 and exposes `window.__glass`.
+Omit `seed` for fresh geometry/fracture randomness on each visit. The debug-only
+`paused` query starts without frame submission for deterministic screenshot
+capture on software GPUs. `advance(seconds)` still integrates the real Rapier
+world and renders the actual resulting poses. Normal navigation never pauses.
+
+Browser tests need a running preview and Chromium:
+
+```sh
+npx playwright install --with-deps chromium
 npm run test:browser
-# On Linux CI, WebGPU canvas compositing also needs an X display:
+# Linux software-GPU canvas capture also requires Xvfb/Mesa:
 xvfb-run -a -s '-screen 0 1440x900x24' npm run test:browser
 ```
 
-Upload **the contents of `dist/`** to the existing static host. A build is now
-required; uploading the source folder directly will not resolve npm imports.
-The build copies the original homepage, scripts, CSS, projects, and any existing
-`images/` assets. `play/glass-orb.html` redirects
-to `/play/`, preserving query parameters. No production deployment is automatic.
-
-## Architecture
-
-- `renderer.js`: WebGPURenderer, automatic WebGL2 backend, orthographic viewport.
-- `geometry.js`: spherical Voronoi dual of jittered Delaunay vertices; closed,
-  irregular polygonal prisms, genuine bevels, per-facet optical attributes.
-- `material.js`: MeshPhysicalNodeMaterial + TSL attributes; transmission, IOR,
-  absorption, thin-film iridescence, dispersion and silver-coated facets. Physical
-  optical thickness follows each solid and its world scale.
-- `environment.js`: HDR studio softboxes, PMREM convolution and direct lights.
-- `sculpture.js`: one GPU bone transform per rigid solid. All vertices have exactly
-  one unit skin weight, so this is rigid transformation, never elastic skinning.
-  One shared geometry, two material groups (glass and silver) avoid hundreds of
-  separate draw submissions. Silver enters the transmission buffer before glass.
-- `physics.js`: fixed 120 Hz Rapier simulation, mass/inertia, torque impulses,
-  interpolated rendering, damping, CCD, contact-supported, sustained subpixel-rest sleep.
-- `fracture.js`: off-center pressure pulse, log-normal impulse mixture, sparse
-  energetic tail, near-drop population, mass/area and inherited-spin effects.
-- `boundaries.js`: six invisible physical walls; viewport bottom is the floor.
-- `interaction.js`: pointer capture, velocity-to-torque, tap/drag separation,
-  keyboard activation, cancellation and cleanup.
-- `performance.js`: device-dependent topology budget (150–340 fragments),
-  measured frame-time pixel-ratio adaptation. Fragments are never deleted to
-  regain FPS. A static studio needs only one environment convolution; reflection
-  directions and all PBR shading are evaluated every rendered frame.
-- `main.js`: shared portrait layout measurement, lifecycle, visibility suspension,
-  resize, reduced motion, resource cleanup and back/forward restoration.
-
-The invisible intro copy deliberately matches the homepage header's content and
-metrics; `.site-shell / .intro / .intro-photo / .portrait-button` supply layout.
-An end-to-end assertion compares their actual bounding rectangles on desktop and
-mobile. Update both intro copies together if homepage copy changes.
-
-## Debug / validation
-
-`/play/?debug&seed=42&renderer=webgl` forces WebGL2 and exposes `window.__glass`.
-Omit `renderer=webgl` to exercise WebGPU with automatic WebGL2 fallback. Omit
-`seed` for a fresh crypto seed on each visit. There is intentionally no reset UI;
-return home and enter Play again for a new fracture.
-
-Reduced motion disables idle rotation and spin gestures and reduces the
-user-triggered fracture impulse to 10%; gravity and real collision remain.
-There is no continuous background rendering after every body sleeps.
-
-`npm test` checks closed hulls, winding, irregularity, reproducibility, torque
-inertia, floor rebound, containment, sleep and viewport resizing. The PR workflow
-also builds and runs Chromium checks on WebGPU/WebGL2, automatic fallback, mobile
-touch, reduced motion, layout alignment, repeated re-entry, and actual rendered
-pixels. The Linux job installs Xvfb/Mesa and enables Vulkan compositing; this is
-necessary for WebGPU screenshots, not a production-browser requirement. Software GPU test timing is not a
-claim of 60 FPS on hardware; profile on target devices before publishing.
-
-## Rendering limits
-
-This is raster PBR, not a path tracer: transmission uses Three.js's screen-space
-scene buffer and cannot refract DOM text or recursively refract every overlapping
-shard. Actual solid geometry, refractive index, thickness, absorption, Fresnel,
-film interference and specular environment lighting remain active after fracture.
-Bloom is intentionally omitted to preserve small high-contrast reflections.
-
-## Current review status
-
-Implementation is under review in PR #1. Physics and build checks pass; browser
-validation is running in GitHub Actions. Results and remaining limits are recorded
-in `VALIDATION.md`. No production deployment has been made.
+GitHub Actions separately checks physics and WebGPU/WebGL2, automatic fallback,
+mobile touch and reduced motion. It records intact, rotated, all presets,
+fracture, tumbling, settled and resize screenshots, then checks repeated visits.
+See `VALIDATION.md` for measured results and the review status. Software GPU
+screenshots do not establish 60 FPS or mobile-device thermal performance.
