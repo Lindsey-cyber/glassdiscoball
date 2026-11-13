@@ -1,0 +1,1132 @@
+/*
+  Disco ball — a mirror ball on a chain, simulated with Rapier (rigid-body
+  physics, WASM) and rendered with Three.js.
+
+  Everything is in SI units: the ball is a 30 cm, 2.4 kg sphere covered in
+  ~900 glass mirror tiles. The browser viewport is the room: its edges are the
+  walls and floor, and the page itself is the back wall that receives the
+  reflected light.
+
+  Physics
+    - The ball is a dynamic rigid body hanging from a rope joint whose anchor
+      is a kinematic body that follows the layout slot (it moves when the page
+      scrolls, so the ball swings).
+    - A small torque motor spins the ball about its own hanging axis.
+    - Dragging applies a spring-damper force at the exact point you grabbed,
+      so off-center grabs produce torque and a realistic spin.
+    - Impacts are measured as the velocity change across a contact with a
+      wall. Hard impacts knock tiles loose around the contact point; each
+      loose tile becomes its own rigid body.
+    - The visible chain is a position-based (Verlet) rope pinned to the
+      anchor and to the ball, so it sags when slack and dangles when cut.
+
+  Light
+    - Mirror tiles are flat metallic boxes with a slight random tilt, lit by
+      a procedural room environment plus directional lights.
+    - With the lights off, every tile reflects every spotlight with the law of
+      reflection; the reflected beams are intersected with the back wall to
+      place the light spots, with size from beam divergence, brightness from
+      flux / footprint area, and elongation from the incidence angle.
+    - Glints are tiles whose reflected light direction points at the camera.
+*/
+
+import * as THREE from "three";
+import RAPIER from "@dimforge/rapier3d-compat";
+
+// ---------------------------------------------------------------------------
+// DOM
+
+const root = document.documentElement;
+const stage = document.getElementById("disco-stage");
+const slot = document.getElementById("play-experience");
+const btnLights = document.getElementById("btn-lights");
+const btnCut = document.getElementById("btn-cut");
+const btnReset = document.getElementById("btn-reset");
+const sepReset = document.getElementById("sep-reset");
+const sepCut = document.getElementById("sep-cut");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------------------------------------------------------------------------
+// Physical constants (SI)
+
+const R = 0.15;                 // ball radius (m)
+const BALL_MASS = 2.4;          // kg
+const RINGS = 30;               // tile rings from pole to pole
+const GROUT = 0.86;             // tile size / pitch
+const TILE_T = 0.0028;          // mirror tile thickness (m)
+const TILE_COLLIDER_T = 0.004;  // slightly thicker collider for stable stacking
+const GLASS_DENSITY = 2500;     // kg/m^3
+const ATTACH_Y = R + 0.03;      // chain attachment point, ball local frame
+const WALL_Z = 0.55;            // distance from ball plane to the page (m)
+const ROOM_HALF_DEPTH = 0.2;    // how far objects may move toward/away from you
+const GRAVITY = 9.81;
+const DT = 1 / 120;             // fixed physics step
+const MAX_STEPS = 8;
+const SPIN_RATE = reduceMotion ? 0 : 0.42; // rad/s, motor target
+const FOV = 22;                 // degrees, mild perspective
+const FLOOR_MARGIN = 14;        // px between the floor and the bottom edge
+
+// ---------------------------------------------------------------------------
+// Small helpers
+
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rand = mulberry32(20261113);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const smooth = (t) => t * t * (3 - 2 * t);
+const easeOutBack = (t) => {
+  const c1 = 1.4, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
+
+const _v1 = new THREE.Vector3();
+const _v2 = new THREE.Vector3();
+const _v3 = new THREE.Vector3();
+const _q1 = new THREE.Quaternion();
+const _m1 = new THREE.Matrix4();
+const _s1 = new THREE.Vector3();
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+// ---------------------------------------------------------------------------
+// Renderer
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({
+    canvas: stage,
+    antialias: true,
+    alpha: true,
+    premultipliedAlpha: true,
+    powerPreference: "high-performance",
+  });
+} catch (err) {
+  root.classList.add("no-webgl");
+  throw err;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 30);
+
+// ---------------------------------------------------------------------------
+// Environment: a procedural room so the mirrors have something to reflect.
+
+function makeEnvironment() {
+  const envScene = new THREE.Scene();
+
+  const c = document.createElement("canvas");
+  c.width = 2048; c.height = 1024;
+  const g = c.getContext("2d");
+  const r = mulberry32(42);
+
+  // ceiling → walls → floor
+  const grad = g.createLinearGradient(0, 0, 0, c.height);
+  grad.addColorStop(0.00, "#f2f2f4");
+  grad.addColorStop(0.30, "#dcdde2");
+  grad.addColorStop(0.46, "#b4b6be");
+  grad.addColorStop(0.52, "#7d7f88");
+  grad.addColorStop(0.56, "#5d5650");
+  grad.addColorStop(1.00, "#2b2622");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, c.width, c.height);
+
+  // floorboards
+  g.globalAlpha = 0.18;
+  for (let y = 0.56 * c.height; y < c.height; y += 10 + r() * 22) {
+    g.fillStyle = r() < 0.5 ? "#1a1612" : "#8a7460";
+    g.fillRect(0, y, c.width, 2);
+  }
+  g.globalAlpha = 1;
+
+  // things along the walls: shelves, frames, plants, books
+  const palette = ["#3d4250", "#6b6f7a", "#a39c92", "#c8c2b8", "#2e3a36",
+                   "#58706a", "#7d8fb3", "#c98f7a", "#d9b8c4", "#e7d9b0", "#1f2128"];
+  for (let i = 0; i < 140; i++) {
+    const w = 18 + r() * 150;
+    const h = 14 + r() * 120;
+    const x = r() * c.width;
+    const y = c.height * (0.33 + r() * 0.2) - h * 0.5;
+    g.fillStyle = palette[(r() * palette.length) | 0];
+    g.globalAlpha = 0.55 + r() * 0.45;
+    g.fillRect(x, y, w, h);
+  }
+  // a few saturated accents (book spines, a poster)
+  const accents = ["#e0566f", "#4f8fe8", "#f2b23c", "#3fb39a", "#9b6be0"];
+  for (let i = 0; i < 70; i++) {
+    g.fillStyle = accents[(r() * accents.length) | 0];
+    g.globalAlpha = 0.85;
+    g.fillRect(r() * c.width, c.height * (0.40 + r() * 0.1), 4 + r() * 9, 18 + r() * 34);
+  }
+  g.globalAlpha = 1;
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const shell = new THREE.Mesh(
+    new THREE.SphereGeometry(10, 64, 32),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide })
+  );
+  envScene.add(shell);
+
+  // HDR emitters: windows and ceiling lights. These make the sparkle.
+  const emit = (w, h, color, strength, pos) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(strength), side: THREE.DoubleSide })
+    );
+    m.position.copy(pos);
+    m.lookAt(0, 0, 0);
+    envScene.add(m);
+  };
+  emit(3.2, 4.0, 0xf4f7ff, 5, new THREE.Vector3(-7.5, 1.0, 5.5));   // big window, front-left
+  emit(2.2, 4.0, 0xf4f7ff, 4, new THREE.Vector3(-2.0, 1.0, 9.0));
+  emit(3.0, 3.6, 0xfff4e6, 3, new THREE.Vector3(8.5, 0.8, -3.0));   // window, right
+  for (let i = 0; i < 9; i++) {                                     // ceiling lights
+    const a = (i / 9) * Math.PI * 2 + 0.3;
+    emit(0.5, 0.5, 0xfff1dc, 18, new THREE.Vector3(Math.cos(a) * 5, 8.2, Math.sin(a) * 5));
+  }
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromScene(envScene, 0.0).texture;
+  pmrem.dispose();
+  tex.dispose();
+  return env;
+}
+scene.environment = makeEnvironment();
+
+// ---------------------------------------------------------------------------
+// Lights. Directions point from the scene toward the light.
+
+const LIGHTS = [
+  // daylight key
+  { dir: new THREE.Vector3(-0.32, 0.45, 0.83), color: 0xffffff, intensity: 2.4, mode: "day", spot: 0 },
+  // stage spots for lights-off
+  { dir: new THREE.Vector3(-0.30, 0.50, 0.81), color: 0xfff0d6, intensity: 6.0, mode: "night", spot: 1.0 },
+  { dir: new THREE.Vector3(0.72, 0.30, 0.62), color: 0xff6ec4, intensity: 3.4, mode: "night", spot: 0.75 },
+  { dir: new THREE.Vector3(0.22, -0.42, 0.88), color: 0x62d6ff, intensity: 2.8, mode: "night", spot: 0.65 },
+];
+for (const L of LIGHTS) {
+  L.dir.normalize();
+  L.light = new THREE.DirectionalLight(L.color, 0);
+  L.light.position.copy(L.dir).multiplyScalar(10);
+  scene.add(L.light);
+  L.rgb = new THREE.Color(L.color); // linear
+  L.weight = 0;
+}
+
+// ---------------------------------------------------------------------------
+// Tile layout: latitude rings, like a real mirror ball.
+
+const tiles = [];
+{
+  const a = Math.PI / RINGS;
+  for (let i = 1; i < RINGS; i++) { // ring 0 is under the hanger cap
+    const th = (i + 0.5) * a;
+    const s = Math.sin(th);
+    const n = Math.max(4, Math.round((2 * Math.PI * s) / a));
+    const h = a * R * GROUT;
+    const w = Math.min(((2 * Math.PI * R * s) / n) * GROUT, h * 1.2);
+    const offset = rand() * Math.PI * 2;
+    for (let j = 0; j < n; j++) {
+      const phi = offset + (j / n) * Math.PI * 2;
+      const nrm = new THREE.Vector3(s * Math.cos(phi), Math.cos(th), s * Math.sin(phi));
+      const east = new THREE.Vector3(-Math.sin(phi), 0, Math.cos(phi));
+      const north = new THREE.Vector3().crossVectors(nrm, east);
+      const basis = new THREE.Matrix4().makeBasis(east, north, nrm);
+      const quat = new THREE.Quaternion().setFromRotationMatrix(basis);
+      // Real tiles are glued by hand: give each a slight tilt and twist.
+      const tilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+        (rand() - 0.5) * 0.045, (rand() - 0.5) * 0.045, (rand() - 0.5) * 0.06));
+      quat.multiply(tilt);
+      const pos = nrm.clone().multiplyScalar(R + TILE_T * 0.5);
+      const local = new THREE.Matrix4().compose(pos, quat, new THREE.Vector3(w, h, TILE_T));
+      const shade = 0.86 + rand() * 0.14;
+      const tint = new THREE.Color(shade, shade * (0.985 + rand() * 0.02), shade * (0.98 + rand() * 0.035));
+      tiles.push({
+        local, localPos: pos, localQuat: quat,
+        localN: new THREE.Vector3(0, 0, 1).applyQuaternion(quat),
+        w, h, area: w * h, tint,
+        state: 0,          // 0 attached, 1 loose (physics), 2 returning
+        body: null,
+        from: null,        // pose at start of return
+        delay: 0,
+      });
+    }
+  }
+}
+const TILE_COUNT = tiles.length;
+let looseCount = 0;
+
+// World-space tile state, refreshed every frame.
+const tileWP = new Float32Array(TILE_COUNT * 3);
+const tileWN = new Float32Array(TILE_COUNT * 3);
+
+// ---------------------------------------------------------------------------
+// Meshes
+
+const tileMesh = new THREE.InstancedMesh(
+  new THREE.BoxGeometry(1, 1, 1),
+  new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: 0.13, envMapIntensity: 1 }),
+  TILE_COUNT
+);
+tileMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+tileMesh.frustumCulled = false;
+tiles.forEach((t, i) => tileMesh.setColorAt(i, t.tint));
+scene.add(tileMesh);
+
+const ball = new THREE.Group();
+scene.add(ball);
+const core = new THREE.Mesh(
+  new THREE.SphereGeometry(R * 0.997, 64, 48),
+  new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.7, metalness: 0.2 })
+);
+ball.add(core);
+const metal = new THREE.MeshStandardMaterial({ color: 0xc9c9cf, metalness: 1, roughness: 0.32 });
+const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.025, 0.014, 32), metal);
+cap.position.y = R + 0.002;
+ball.add(cap);
+const eye = new THREE.Mesh(new THREE.TorusGeometry(0.0075, 0.0022, 10, 24), metal);
+eye.position.y = ATTACH_Y - 0.0075;
+ball.add(eye);
+
+// Chain: instanced cylinders along a Verlet rope.
+const ROPE_N = 30;
+const chainMesh = new THREE.InstancedMesh(
+  new THREE.CylinderGeometry(1, 1, 1, 8, 1),
+  new THREE.MeshStandardMaterial({ color: 0xb9b9bf, metalness: 1, roughness: 0.35 }),
+  ROPE_N
+);
+chainMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+chainMesh.frustumCulled = false;
+scene.add(chainMesh);
+
+// --- light spots on the back wall ------------------------------------------
+const MAX_SPOTS = TILE_COUNT * 3;
+const spotGeo = new THREE.InstancedBufferGeometry();
+spotGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0]), 3));
+spotGeo.setIndex([0, 1, 2, 0, 2, 3]);
+const spotCenter = new THREE.InstancedBufferAttribute(new Float32Array(MAX_SPOTS * 3), 3).setUsage(THREE.DynamicDrawUsage);
+const spotAxes = new THREE.InstancedBufferAttribute(new Float32Array(MAX_SPOTS * 4), 4).setUsage(THREE.DynamicDrawUsage);
+const spotColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_SPOTS * 3), 3).setUsage(THREE.DynamicDrawUsage);
+spotGeo.setAttribute("aCenter", spotCenter);
+spotGeo.setAttribute("aAxes", spotAxes);
+spotGeo.setAttribute("aColor", spotColor);
+spotGeo.instanceCount = 0;
+
+const additive = {
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.CustomBlending,
+  blendEquation: THREE.AddEquation,
+  blendSrc: THREE.OneFactor,
+  blendDst: THREE.OneFactor,
+  blendSrcAlpha: THREE.OneFactor,
+  blendDstAlpha: THREE.OneFactor,
+};
+
+const spotMesh = new THREE.Mesh(spotGeo, new THREE.ShaderMaterial({
+  ...additive,
+  uniforms: { uOpacity: { value: 0 } },
+  vertexShader: /* glsl */`
+    attribute vec3 aCenter;
+    attribute vec4 aAxes;   // xy: major axis, zw: minor axis (wall plane)
+    attribute vec3 aColor;
+    varying vec2 vUv;
+    varying vec3 vColor;
+    void main() {
+      vUv = position.xy;
+      vColor = aColor;
+      vec3 p = aCenter + vec3(aAxes.xy * position.x + aAxes.zw * position.y, 0.0);
+      gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.0);
+    }`,
+  fragmentShader: /* glsl */`
+    uniform float uOpacity;
+    varying vec2 vUv;
+    varying vec3 vColor;
+    void main() {
+      vec2 q = abs(vUv);
+      float d = pow(pow(q.x, 5.0) + pow(q.y, 5.0), 0.2);   // rounded square: tiles are square
+      float m = 1.0 - smoothstep(0.5, 1.0, d);
+      vec3 c = vColor * m * uOpacity;
+      gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
+    }`,
+}));
+spotMesh.frustumCulled = false;
+spotMesh.renderOrder = 1;
+scene.add(spotMesh);
+
+// --- glints (star flares) ---------------------------------------------------
+const MAX_GLINTS = 48;
+const glintGeo = new THREE.InstancedBufferGeometry();
+glintGeo.setAttribute("position", spotGeo.getAttribute("position"));
+glintGeo.setIndex([0, 1, 2, 0, 2, 3]);
+const glintCenter = new THREE.InstancedBufferAttribute(new Float32Array(MAX_GLINTS * 3), 3).setUsage(THREE.DynamicDrawUsage);
+const glintParam = new THREE.InstancedBufferAttribute(new Float32Array(MAX_GLINTS * 2), 2).setUsage(THREE.DynamicDrawUsage);
+const glintColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_GLINTS * 3), 3).setUsage(THREE.DynamicDrawUsage);
+glintGeo.setAttribute("aCenter", glintCenter);
+glintGeo.setAttribute("aParam", glintParam);
+glintGeo.setAttribute("aColor", glintColor);
+glintGeo.instanceCount = 0;
+
+const glintMesh = new THREE.Mesh(glintGeo, new THREE.ShaderMaterial({
+  ...additive,
+  depthTest: false,
+  vertexShader: /* glsl */`
+    attribute vec3 aCenter;
+    attribute vec2 aParam;  // x: size, y: rotation
+    attribute vec3 aColor;
+    varying vec2 vUv;
+    varying vec3 vColor;
+    void main() {
+      vUv = position.xy;
+      vColor = aColor;
+      vec4 mv = viewMatrix * vec4(aCenter, 1.0);
+      float c = cos(aParam.y), s = sin(aParam.y);
+      mv.xy += mat2(c, s, -s, c) * position.xy * aParam.x;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: /* glsl */`
+    varying vec2 vUv;
+    varying vec3 vColor;
+    void main() {
+      vec2 p = vUv;
+      float r2 = dot(p, p);
+      float core = exp(-r2 * 70.0) + 0.35 * exp(-r2 * 9.0);
+      float rays = exp(-abs(p.x) * 70.0) * exp(-abs(p.y) * 3.2)
+                 + exp(-abs(p.y) * 70.0) * exp(-abs(p.x) * 3.2);
+      vec2 d = vec2(p.x + p.y, p.x - p.y) * 0.7071;
+      rays += 0.35 * (exp(-abs(d.x) * 80.0) * exp(-abs(d.y) * 6.0)
+                    + exp(-abs(d.y) * 80.0) * exp(-abs(d.x) * 6.0));
+      float fade = 1.0 - smoothstep(0.6, 1.0, sqrt(r2));
+      vec3 c = vColor * (core + rays * 0.8) * fade;
+      gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
+    }`,
+}));
+glintMesh.frustumCulled = false;
+glintMesh.renderOrder = 3;
+scene.add(glintMesh);
+
+// --- soft shadow (daylight) and spotlight spill (lights off) on the wall ----
+const wallQuad = new THREE.PlaneGeometry(2, 2);
+const shadowMesh = new THREE.Mesh(wallQuad, new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  uniforms: { uOpacity: { value: 0 }, uSoft: { value: 0.5 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform float uOpacity; uniform float uSoft;
+    varying vec2 vUv;
+    void main() {
+      float r = length(vUv);
+      float a = 1.0 - smoothstep(0.5 - uSoft * 0.5, 0.5 + uSoft * 0.5, r);
+      gl_FragColor = vec4(0.0, 0.0, 0.0, a * uOpacity);
+    }`,
+}));
+shadowMesh.renderOrder = 0;
+scene.add(shadowMesh);
+
+const spillMesh = new THREE.Mesh(wallQuad, new THREE.ShaderMaterial({
+  ...additive,
+  uniforms: { uOpacity: { value: 0 }, uColor: { value: new THREE.Color(0xfff0d6) }, uHole: { value: 0.3 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform float uOpacity; uniform vec3 uColor; uniform float uHole;
+    varying vec2 vUv;
+    void main() {
+      float r = length(vUv);
+      float beam = exp(-r * r * 3.5) * (1.0 - smoothstep(0.85, 1.0, r));
+      float shadow = smoothstep(uHole * 0.75, uHole * 1.35, r);   // the ball blocks the beam
+      vec3 c = uColor * beam * shadow * uOpacity;
+      gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
+    }`,
+}));
+spillMesh.renderOrder = 0;
+scene.add(spillMesh);
+
+// ---------------------------------------------------------------------------
+// Physics
+
+await RAPIER.init();
+
+const world = new RAPIER.World({ x: 0, y: -GRAVITY, z: 0 });
+world.timestep = DT;
+
+let anchorBody, ballBody, ballCollider, ropeJoint = null, ropeLength = 0.2;
+let wallBody = null;
+let wallColliders = [];
+
+// Viewport ↔ world mapping
+let vw = 0, vh = 0, ppm = 700, halfW = 1, halfH = 1;
+const toWorldX = (px) => (px - vw / 2) / ppm;
+const toWorldY = (py) => (vh / 2 - py) / ppm;
+
+function slotCenter(out) {
+  const r = slot.getBoundingClientRect();
+  return out.set(toWorldX(r.left + r.width / 2), toWorldY(r.top + r.height / 2), 0);
+}
+const restCenter = new THREE.Vector3();
+const anchorPos = new THREE.Vector3();
+
+function buildWalls() {
+  if (wallBody) world.removeRigidBody(wallBody);
+  wallBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+  const T = 1;
+  const W = halfW + 2 * T, H = halfH + 3, D = ROOM_HALF_DEPTH + 2 * T;
+  const mk = (hx, hy, hz, x, y, z) => world.createCollider(
+    RAPIER.ColliderDesc.cuboid(hx, hy, hz).setTranslation(x, y, z).setRestitution(0.3).setFriction(0.6), wallBody);
+  wallColliders = [
+    mk(W, T, D, 0, -halfH + FLOOR_MARGIN / ppm - T, 0),  // floor (just above the bottom of the viewport)
+    mk(W, T, D, 0, halfH + 2.5 + T, 0),                  // ceiling, well above the screen
+    mk(T, H, D, -halfW - T, 0, 0),                       // left
+    mk(T, H, D, halfW + T, 0, 0),                        // right
+    mk(W, H, T, 0, 0, -ROOM_HALF_DEPTH - T),             // back
+    mk(W, H, T, 0, 0, ROOM_HALF_DEPTH + T),              // front (the glass you look through)
+  ];
+}
+
+function hangPosition(out) {
+  return out.set(anchorPos.x, anchorPos.y - ropeLength - ATTACH_Y, 0);
+}
+
+function attachRope() {
+  if (ropeJoint) return;
+  const jd = RAPIER.JointData.rope(ropeLength, { x: 0, y: 0, z: 0 }, { x: 0, y: ATTACH_Y, z: 0 });
+  ropeJoint = world.createImpulseJoint(jd, anchorBody, ballBody, true);
+}
+
+function createBall() {
+  slotCenter(restCenter);
+  const topY = halfH + 40 / ppm;
+  ropeLength = Math.max(0.03, topY - restCenter.y - ATTACH_Y);
+  anchorPos.set(restCenter.x, restCenter.y + ATTACH_Y + ropeLength, 0);
+
+  anchorBody = world.createRigidBody(
+    RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(anchorPos.x, anchorPos.y, 0));
+  ballBody = world.createRigidBody(
+    RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(restCenter.x + 0.015, restCenter.y + 0.001, 0)
+      .setAngvel({ x: 0, y: SPIN_RATE, z: 0 })
+      .setLinearDamping(0.06)
+      .setAngularDamping(0.22)
+      .setCcdEnabled(true)
+      .setCanSleep(false));
+  ballCollider = world.createCollider(
+    RAPIER.ColliderDesc.ball(R + 0.0005).setMass(BALL_MASS).setRestitution(0.42).setFriction(0.6), ballBody);
+  attachRope();
+}
+
+// ---------------------------------------------------------------------------
+// Verlet chain (visual only; the physical constraint is the rope joint)
+
+const ropeP = Array.from({ length: ROPE_N + 1 }, () => new THREE.Vector3());
+const ropePrev = Array.from({ length: ROPE_N + 1 }, () => new THREE.Vector3());
+const ropeEndFrom = new THREE.Vector3();
+
+function resetRope(endWorld) {
+  for (let i = 0; i <= ROPE_N; i++) {
+    ropeP[i].lerpVectors(anchorPos, endWorld, i / ROPE_N);
+    ropePrev[i].copy(ropeP[i]);
+  }
+}
+
+function stepRope(dt, endPin) {
+  // Slightly shorter than the physical rope so a hanging chain is always under tension.
+  const seg = (ropeLength * 0.994) / ROPE_N;
+  const g = -GRAVITY * dt * dt;
+  const floorY = -halfH + FLOOR_MARGIN / ppm + 0.002;
+  for (let i = 1; i <= ROPE_N; i++) {
+    const p = ropeP[i], q = ropePrev[i];
+    const vx = (p.x - q.x) * 0.985, vy = (p.y - q.y) * 0.985, vz = (p.z - q.z) * 0.985;
+    q.copy(p);
+    p.x += vx; p.y += vy + g; p.z += vz;
+  }
+  ropeP[0].copy(anchorPos);
+  if (endPin) ropeP[ROPE_N].copy(endPin);
+  for (let it = 0; it < 30; it++) {
+    for (let i = 0; i < ROPE_N; i++) {
+      const a = ropeP[i], b = ropeP[i + 1];
+      const wa = i === 0 ? 0 : 1;
+      const wb = i + 1 === ROPE_N && endPin ? 0 : 1;
+      if (wa + wb === 0) continue;
+      _v1.subVectors(b, a);
+      const d = _v1.length() || 1e-6;
+      const k = (d - seg) / d / (wa + wb);
+      a.addScaledVector(_v1, k * wa);
+      b.addScaledVector(_v1, -k * wb);
+    }
+    for (let i = 1; i <= ROPE_N; i++) if (ropeP[i].y < floorY) ropeP[i].y = floorY;
+  }
+}
+
+function writeChain() {
+  const r = 0.0016;
+  for (let i = 0; i < ROPE_N; i++) {
+    const a = ropeP[i], b = ropeP[i + 1];
+    _v1.subVectors(b, a);
+    const len = _v1.length();
+    _v2.addVectors(a, b).multiplyScalar(0.5);
+    _q1.setFromUnitVectors(Y_AXIS, _v1.multiplyScalar(1 / (len || 1)));
+    _m1.compose(_v2, _q1, _s1.set(r, len * 1.04, r));
+    _m1.toArray(chainMesh.instanceMatrix.array, i * 16);
+  }
+  chainMesh.instanceMatrix.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------------------
+// State
+
+let state = "hanging";      // hanging | free | returning
+let returnT = 0;
+const RETURN_TIME = 1.5;
+const ballFrom = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+const ballTo = { p: new THREE.Vector3(), q: new THREE.Quaternion() };
+let impactCooldown = 0;
+
+const ballPos = new THREE.Vector3();
+const ballQuat = new THREE.Quaternion();
+const ballMatrix = new THREE.Matrix4();
+const ONE = new THREE.Vector3(1, 1, 1);
+
+function readBall() {
+  const t = ballBody.translation(), r = ballBody.rotation();
+  ballPos.set(t.x, t.y, t.z);
+  ballQuat.set(r.x, r.y, r.z, r.w);
+  ballMatrix.compose(ballPos, ballQuat, ONE);
+}
+
+function updateUI() {
+  const damaged = looseCount > 0;
+  btnCut.hidden = state !== "hanging";
+  const showReset = state === "free" || (state === "hanging" && damaged);
+  btnReset.hidden = !showReset;
+  sepReset.hidden = !showReset || btnCut.hidden;
+  sepCut.hidden = btnCut.hidden && btnReset.hidden;
+  btnReset.textContent = state === "free" ? "put it back" : "fix the tiles";
+}
+
+function cut() {
+  if (state !== "hanging" || !ropeJoint) return;
+  world.removeImpulseJoint(ropeJoint, true);
+  ropeJoint = null;
+  state = "free";
+  updateUI();
+}
+
+function startReturn() {
+  if (state === "returning") return;
+  drag = null;
+  readBall();
+  if (ropeJoint) { world.removeImpulseJoint(ropeJoint, true); ropeJoint = null; }
+  ballBody.setBodyType(RAPIER.RigidBodyType.KinematicPositionBased, true);
+  ballFrom.p.copy(ballPos);
+  ballFrom.q.copy(ballQuat);
+  // Upright, keeping the current spin angle about the hanging axis.
+  _v1.copy(Y_AXIS).applyQuaternion(ballQuat);
+  _q1.setFromUnitVectors(_v1, Y_AXIS);
+  ballTo.q.copy(_q1).multiply(ballQuat);
+  ropeEndFrom.copy(ropeP[ROPE_N]);
+
+  for (const t of tiles) {
+    if (t.state !== 1) continue;
+    const tr = t.body.translation(), rr = t.body.rotation();
+    t.from = { p: new THREE.Vector3(tr.x, tr.y, tr.z), q: new THREE.Quaternion(rr.x, rr.y, rr.z, rr.w) };
+    world.removeRigidBody(t.body);
+    t.body = null;
+    t.state = 2;
+    t.delay = rand() * 0.45;
+  }
+  state = "returning";
+  returnT = 0;
+  updateUI();
+}
+
+function finishReturn() {
+  for (const t of tiles) if (t.state === 2) { t.state = 0; t.from = null; }
+  looseCount = 0;
+  hangPosition(_v1);
+  ballBody.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
+  ballBody.setTranslation({ x: _v1.x, y: _v1.y, z: 0 }, true);
+  ballBody.setRotation(ballTo.q, true);
+  ballBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  ballBody.setAngvel({ x: 0, y: SPIN_RATE, z: 0 }, true);
+  attachRope();
+  state = "hanging";
+  updateUI();
+}
+
+/* Instantly rebuild after a large layout change. */
+function hardReset() {
+  for (const t of tiles) {
+    if (t.body) world.removeRigidBody(t.body);
+    t.body = null; t.state = 0; t.from = null;
+  }
+  looseCount = 0;
+  if (ropeJoint) world.removeImpulseJoint(ropeJoint, true);
+  ropeJoint = null;
+  if (ballBody) world.removeRigidBody(ballBody);
+  if (anchorBody) world.removeRigidBody(anchorBody);
+  createBall();
+  readBall();
+  _v1.set(0, ATTACH_Y, 0).applyMatrix4(ballMatrix);
+  resetRope(_v1);
+  state = "hanging";
+  drag = null;
+  updateUI();
+}
+
+// ---------------------------------------------------------------------------
+// Tiles coming loose
+
+function knockTiles(n, speed) {
+  // n: unit vector pointing out of the wall, into the room. Contact is at -n.
+  const s = clamp((speed - 2.0) / 5.5, 0, 1);
+  const cone = 0.22 + 1.25 * s;
+  const lv = ballBody.linvel(), av = ballBody.angvel();
+  let knocked = 0;
+  for (let k = 0; k < TILE_COUNT; k++) {
+    const t = tiles[k];
+    if (t.state !== 0) continue;
+    _v1.copy(t.localPos).normalize().applyQuaternion(ballQuat);   // outward dir
+    const ang = Math.acos(clamp(-_v1.dot(n), -1, 1));
+    let p;
+    if (speed < 2.0) {
+      p = ang < 0.2 ? 0.25 * (speed - 1.3) / 0.7 : 0;  // a gentle knock loosens a few
+    } else {
+      p = ang < cone ? Math.pow(1 - ang / cone, 0.7) * (0.3 + 0.7 * s) : 0;
+      p += 0.05 * s * s;
+    }
+    if (rand() >= p) continue;
+
+    // Pose of the tile right now.
+    _m1.multiplyMatrices(ballMatrix, t.local);
+    const pos = new THREE.Vector3().setFromMatrixPosition(_m1);
+    const q = new THREE.Quaternion().multiplyQuaternions(ballQuat, t.localQuat);
+    // Velocity of that point on the ball, plus the kick of the impact.
+    _v2.set(av.x, av.y, av.z).cross(_v3.subVectors(pos, ballPos));
+    const kick = (0.25 + rand() * 0.9) * (0.35 + 0.22 * speed);
+    const vx = lv.x + _v2.x + n.x * kick + _v1.x * kick * 0.6 + (rand() - 0.5) * 0.4;
+    const vy = lv.y + _v2.y + n.y * kick + _v1.y * kick * 0.6 + (rand() - 0.5) * 0.4;
+    const vz = lv.z + _v2.z + n.z * kick + _v1.z * kick * 0.6 + (rand() - 0.5) * 0.4;
+    const body = world.createRigidBody(
+      RAPIER.RigidBodyDesc.dynamic()
+        .setTranslation(pos.x, pos.y, pos.z)
+        .setRotation({ x: q.x, y: q.y, z: q.z, w: q.w })
+        .setLinvel(vx, vy, vz)
+        .setAngvel({ x: (rand() - 0.5) * 40, y: (rand() - 0.5) * 40, z: (rand() - 0.5) * 40 })
+        .setLinearDamping(0.1)
+        .setAngularDamping(0.3));
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(t.w / 2, t.h / 2, TILE_COLLIDER_T / 2)
+        .setDensity(GLASS_DENSITY).setRestitution(0.18).setFriction(0.55), body);
+    t.body = body;
+    t.state = 1;
+    looseCount++;
+    knocked++;
+  }
+  if (knocked) updateUI();
+}
+
+// ---------------------------------------------------------------------------
+// Input: grab the ball anywhere on the page.
+
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const hitSphere = new THREE.Sphere(new THREE.Vector3(), R + TILE_T);
+let drag = null;
+
+function rayFromClient(x, y) {
+  ndc.set((x / vw) * 2 - 1, -(y / vh) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  return raycaster.ray;
+}
+function pickBall(x, y, out) {
+  if (!ballBody || state === "returning") return null;
+  hitSphere.center.copy(ballPos);
+  return rayFromClient(x, y).intersectSphere(hitSphere, out);
+}
+function pointOnPlaneZ(x, y, z, out) {
+  const ray = rayFromClient(x, y);
+  const t = (z - ray.origin.z) / ray.direction.z;
+  return out.copy(ray.direction).multiplyScalar(t).add(ray.origin);
+}
+
+const _hit = new THREE.Vector3();
+addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.target.closest("a, button")) return;
+  if (!pickBall(e.clientX, e.clientY, _hit)) return;
+  e.preventDefault();
+  const inv = _m1.copy(ballMatrix).invert();
+  drag = {
+    id: e.pointerId,
+    local: _hit.clone().applyMatrix4(inv),
+    z: _hit.z,
+    target: _hit.clone(),
+  };
+  root.style.cursor = "grabbing";
+}, { passive: false });
+
+addEventListener("touchstart", (e) => {
+  const t = e.touches[0];
+  if (t && pickBall(t.clientX, t.clientY, _hit)) e.preventDefault();
+}, { passive: false });
+
+addEventListener("pointermove", (e) => {
+  if (drag && e.pointerId === drag.id) {
+    pointOnPlaneZ(e.clientX, e.clientY, drag.z, drag.target);
+    drag.target.x = clamp(drag.target.x, -halfW + R, halfW - R);
+    drag.target.y = clamp(drag.target.y, -halfH + R, halfH + 1);
+  } else if (e.pointerType === "mouse") {
+    root.style.cursor = pickBall(e.clientX, e.clientY, _hit) ? "grab" : "";
+  }
+});
+
+function endDrag(e) {
+  if (!drag || e.pointerId !== drag.id) return;
+  drag = null;
+  root.style.cursor = pickBall(e.clientX, e.clientY, _hit) ? "grab" : "";
+}
+addEventListener("pointerup", endDrag);
+addEventListener("pointercancel", endDrag);
+
+addEventListener("dblclick", (e) => {
+  if (pickBall(e.clientX, e.clientY, _hit)) cut();
+});
+
+// ---------------------------------------------------------------------------
+// Controls
+
+let darkTarget = 0, dark = 0;
+function setLights(off) {
+  darkTarget = off ? 1 : 0;
+  root.classList.toggle("lights-off", off);
+  btnLights.textContent = off ? "lights on" : "lights off";
+  btnLights.setAttribute("aria-pressed", String(off));
+}
+btnLights.addEventListener("click", () => setLights(darkTarget === 0));
+btnCut.addEventListener("click", cut);
+btnReset.addEventListener("click", startReturn);
+addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "l") setLights(darkTarget === 0);
+  else if (k === "c") cut();
+  else if (k === "r" && (state === "free" || looseCount)) startReturn();
+});
+
+// ---------------------------------------------------------------------------
+// Layout
+
+function syncViewport(force) {
+  const w = innerWidth, h = innerHeight;
+  if (!force && w === vw && h === vh) return;
+  const widthChanged = w !== vw;
+  vw = w; vh = h;
+  renderer.setSize(w, h);
+  if (widthChanged || force) {
+    const r = slot.getBoundingClientRect();
+    ppm = (Math.max(120, r.width) * 0.5 * 0.88) / (R + TILE_T);
+  }
+  halfW = vw / 2 / ppm;
+  halfH = vh / 2 / ppm;
+  camera.aspect = vw / vh;
+  camera.position.set(0, 0, halfH / Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+  camera.near = 0.05;
+  camera.far = camera.position.z + WALL_Z + 5;
+  camera.updateProjectionMatrix();
+  buildWalls();
+  if (widthChanged || force) hardReset();
+}
+
+function updateAnchor() {
+  slotCenter(restCenter);
+  anchorPos.set(restCenter.x, restCenter.y + ATTACH_Y + ropeLength, 0);
+  anchorBody.setNextKinematicTranslation({ x: anchorPos.x, y: anchorPos.y, z: 0 });
+}
+
+// ---------------------------------------------------------------------------
+// Physics step
+
+const prevVel = new THREE.Vector3();
+const appliedAcc = new THREE.Vector3();
+const _n = new THREE.Vector3();
+const I_BALL = 0.4 * BALL_MASS * R * R;
+
+function physicsStep() {
+  ballBody.resetForces(true);
+  ballBody.resetTorques(true);
+  readBall();
+  appliedAcc.set(0, 0, 0);
+
+  if (state === "returning") {
+    returnT += DT;
+    const u = smooth(clamp(returnT / RETURN_TIME, 0, 1));
+    hangPosition(ballTo.p);
+    _v1.lerpVectors(ballFrom.p, ballTo.p, u);
+    _v1.y += Math.sin(u * Math.PI) * 0.06;
+    _q1.slerpQuaternions(ballFrom.q, ballTo.q, u);
+    ballBody.setNextKinematicTranslation(_v1);
+    ballBody.setNextKinematicRotation(_q1);
+  } else {
+    // Motor: hold a slow spin about the ball's hanging axis.
+    if (state === "hanging") {
+      _v1.copy(Y_AXIS).applyQuaternion(ballQuat);
+      const w = ballBody.angvel();
+      const err = SPIN_RATE - (w.x * _v1.x + w.y * _v1.y + w.z * _v1.z);
+      const tq = I_BALL * 1.6 * err + I_BALL * 0.22 * SPIN_RATE;  // last term cancels damping
+      ballBody.addTorque({ x: _v1.x * tq, y: _v1.y * tq, z: _v1.z * tq }, true);
+    }
+    // Hand: a critically-damped spring at the grabbed point.
+    if (drag) {
+      const gp = _v1.copy(drag.local).applyMatrix4(ballMatrix);
+      const lv = ballBody.linvel(), av = ballBody.angvel();
+      _v2.set(av.x, av.y, av.z).cross(_v3.subVectors(gp, ballPos)).add(_v3.set(lv.x, lv.y, lv.z));
+      const k = BALL_MASS * 420, c = 2 * Math.sqrt(k * BALL_MASS) * 0.75;
+      _v3.subVectors(drag.target, gp).multiplyScalar(k).addScaledVector(_v2, -c);
+      const maxF = BALL_MASS * 60;
+      if (_v3.length() > maxF) _v3.setLength(maxF);
+      ballBody.addForceAtPoint({ x: _v3.x, y: _v3.y, z: _v3.z }, { x: gp.x, y: gp.y, z: gp.z }, true);
+      appliedAcc.copy(_v3).multiplyScalar(1 / BALL_MASS);
+    }
+  }
+
+  const lv0 = ballBody.linvel();
+  prevVel.set(lv0.x, lv0.y, lv0.z);
+
+  world.step();
+  readBall();
+
+  // Impact detection: velocity change not explained by gravity or the hand,
+  // while touching a wall.
+  if (state !== "returning") {
+    impactCooldown = Math.max(0, impactCooldown - DT);
+    const lv = ballBody.linvel();
+    _n.set(lv.x - prevVel.x - appliedAcc.x * DT,
+           lv.y - prevVel.y - (appliedAcc.y - GRAVITY) * DT,
+           lv.z - prevVel.z - appliedAcc.z * DT);
+    const dv = _n.length();
+    if (dv > 1.3 && impactCooldown === 0) {
+      let touching = false;
+      for (const wc of wallColliders) {
+        world.contactPair(ballCollider, wc, (m) => { if (m.numContacts() > 0) touching = true; });
+        if (touching) break;
+      }
+      if (touching) {
+        impactCooldown = 0.12;
+        knockTiles(_n.multiplyScalar(1 / dv), dv);
+      }
+    }
+  }
+
+  // Chain
+  let endPin = null;
+  if (state === "hanging") endPin = _v1.set(0, ATTACH_Y, 0).applyMatrix4(ballMatrix);
+  else if (state === "returning") {
+    _v2.set(0, ATTACH_Y, 0).applyMatrix4(ballMatrix);
+    endPin = _v1.lerpVectors(ropeEndFrom, _v2, smooth(clamp(returnT / (RETURN_TIME * 0.8), 0, 1)));
+  }
+  stepRope(DT, endPin);
+
+  if (state === "returning" && returnT >= RETURN_TIME) finishReturn();
+}
+
+// ---------------------------------------------------------------------------
+// Per-frame: tiles, spots, glints
+
+const glintPool = [];   // {i, I, light}
+const camPos = new THREE.Vector3();
+const _L = new THREE.Vector3();
+
+function updateTiles() {
+  const arr = tileMesh.instanceMatrix.array;
+  const retU = state === "returning" ? returnT : 0;
+  for (let k = 0; k < TILE_COUNT; k++) {
+    const t = tiles[k];
+    if (t.state === 0) {
+      _m1.multiplyMatrices(ballMatrix, t.local);
+      _v1.copy(t.localN).applyQuaternion(ballQuat);
+    } else if (t.state === 1) {
+      const tr = t.body.translation(), rr = t.body.rotation();
+      _v2.set(tr.x, tr.y, tr.z);
+      _q1.set(rr.x, rr.y, rr.z, rr.w);
+      _m1.compose(_v2, _q1, _s1.set(t.w, t.h, TILE_T));
+      _v1.copy(Z_AXIS).applyQuaternion(_q1);
+    } else {
+      // Flying home: arc from where it lay to its slot on the moving ball.
+      const u = clamp((retU - t.delay) / (RETURN_TIME - 0.5), 0, 1);
+      const e = easeOutBack(u);
+      _v2.copy(t.localPos).applyMatrix4(ballMatrix);
+      _v3.copy(t.from.p).lerp(_v2, e);
+      _v3.y += Math.sin(Math.min(u, 1) * Math.PI) * 0.12;
+      _q1.multiplyQuaternions(ballQuat, t.localQuat);
+      _q1.slerpQuaternions(t.from.q, _q1, smooth(u));
+      _m1.compose(_v3, _q1, _s1.set(t.w, t.h, TILE_T));
+      _v1.copy(Z_AXIS).applyQuaternion(_q1);
+    }
+    _m1.toArray(arr, k * 16);
+    const e = _m1.elements;
+    tileWP[k * 3] = e[12]; tileWP[k * 3 + 1] = e[13]; tileWP[k * 3 + 2] = e[14];
+    tileWN[k * 3] = _v1.x; tileWN[k * 3 + 1] = _v1.y; tileWN[k * 3 + 2] = _v1.z;
+  }
+  tileMesh.instanceMatrix.needsUpdate = true;
+}
+
+function updateLight(time) {
+  camPos.copy(camera.position);
+  const cAx = spotCenter.array, aAx = spotAxes.array, colAx = spotColor.array;
+  let ns = 0;
+  glintPool.length = 0;
+  const spotsOn = dark > 0.01;
+  const xLimit = halfW * (camera.position.z + WALL_Z) / camera.position.z * 1.15;
+  const yLimit = halfH * (camera.position.z + WALL_Z) / camera.position.z * 1.15;
+
+  for (const L of LIGHTS) {
+    if (L.weight < 0.01) continue;
+    const lx = L.dir.x, ly = L.dir.y, lz = L.dir.z;
+    const doSpots = spotsOn && L.spot > 0;
+    const gain = 3.2 * L.spot * L.weight;
+    for (let k = 0; k < TILE_COUNT; k++) {
+      const nx = tileWN[k * 3], ny = tileWN[k * 3 + 1], nz = tileWN[k * 3 + 2];
+      const nl = nx * lx + ny * ly + nz * lz;
+      if (nl <= 0.02) continue;
+      const px = tileWP[k * 3], py = tileWP[k * 3 + 1], pz = tileWP[k * 3 + 2];
+      // Law of reflection.
+      const rx = 2 * nl * nx - lx, ry = 2 * nl * ny - ly, rz = 2 * nl * nz - lz;
+
+      // Glint: is the reflected beam heading into the camera?
+      let vx = camPos.x - px, vy = camPos.y - py, vz = camPos.z - pz;
+      const vl = Math.hypot(vx, vy, vz);
+      vx /= vl; vy /= vl; vz /= vl;
+      const cosA = rx * vx + ry * vy + rz * vz;
+      if (cosA > 0.996 && nx * vx + ny * vy + nz * vz > 0.05) {
+        const a = Math.acos(Math.min(1, cosA));
+        const I = Math.exp(-(a * a) / (0.03 * 0.03)) * L.weight * (L.mode === "day" ? 0.8 : 1);
+        if (I > 0.06) glintPool.push(k, I, LIGHTS.indexOf(L));
+      }
+
+      // Spot on the back wall.
+      if (!doSpots || rz > -0.06) continue;
+      const t = (-WALL_Z - pz) / rz;
+      const hx = px + rx * t, hy = py + ry * t;
+      if (Math.abs(hx) > xLimit || Math.abs(hy) > yLimit) continue;
+      const area = tiles[k].area;
+      const su = Math.sqrt(area * nl) * 0.5 + t * 0.0045;   // beam half-width: tile + divergence
+      const arz = -rz;
+      const E = Math.min(1.4, gain * area * nl * arz / (4 * su * su));
+      if (E < 0.015) continue;
+      // Elongate along the in-plane direction of the beam.
+      let dx = rx, dy = ry;
+      const dl = Math.hypot(dx, dy);
+      if (dl > 1e-5) { dx /= dl; dy /= dl; } else { dx = 1; dy = 0; }
+      const stretch = Math.min(3, 1 / arz);
+      cAx[ns * 3] = hx; cAx[ns * 3 + 1] = hy; cAx[ns * 3 + 2] = -WALL_Z;
+      aAx[ns * 4] = dx * su * stretch; aAx[ns * 4 + 1] = dy * su * stretch;
+      aAx[ns * 4 + 2] = -dy * su; aAx[ns * 4 + 3] = dx * su;
+      colAx[ns * 3] = L.rgb.r * E; colAx[ns * 3 + 1] = L.rgb.g * E; colAx[ns * 3 + 2] = L.rgb.b * E;
+      ns++;
+    }
+  }
+  spotGeo.instanceCount = ns;
+  spotCenter.needsUpdate = spotAxes.needsUpdate = spotColor.needsUpdate = true;
+  spotCenter.clearUpdateRanges(); spotAxes.clearUpdateRanges(); spotColor.clearUpdateRanges();
+  spotCenter.addUpdateRange(0, ns * 3); spotAxes.addUpdateRange(0, ns * 4); spotColor.addUpdateRange(0, ns * 3);
+  spotMesh.material.uniforms.uOpacity.value = dark;
+
+  // Strongest glints only.
+  const order = [];
+  for (let i = 0; i < glintPool.length; i += 3) order.push(i);
+  order.sort((a, b) => glintPool[b + 1] - glintPool[a + 1]);
+  const ng = Math.min(MAX_GLINTS, order.length);
+  const gc = glintCenter.array, gp = glintParam.array, gcol = glintColor.array;
+  for (let j = 0; j < ng; j++) {
+    const i = order[j];
+    const k = glintPool[i], I = glintPool[i + 1], L = LIGHTS[glintPool[i + 2]];
+    const px = tileWP[k * 3], py = tileWP[k * 3 + 1], pz = tileWP[k * 3 + 2];
+    _v1.set(camPos.x - px, camPos.y - py, camPos.z - pz).normalize().multiplyScalar(0.02);
+    gc[j * 3] = px + _v1.x; gc[j * 3 + 1] = py + _v1.y; gc[j * 3 + 2] = pz + _v1.z;
+    gp[j * 2] = (0.025 + 0.075 * Math.sqrt(I)) * (0.8 + 0.4 * dark);
+    gp[j * 2 + 1] = 0.25 + Math.sin(k * 12.9898) * 0.25 + time * 0.15;
+    const b = 1.4 * I;
+    gcol[j * 3] = (0.6 + 0.4 * L.rgb.r) * b;
+    gcol[j * 3 + 1] = (0.6 + 0.4 * L.rgb.g) * b;
+    gcol[j * 3 + 2] = (0.6 + 0.4 * L.rgb.b) * b;
+  }
+  glintGeo.instanceCount = ng;
+  glintCenter.needsUpdate = glintParam.needsUpdate = glintColor.needsUpdate = true;
+
+  // Wall shadow (day) and spotlight spill with the ball's shadow (night).
+  const key = LIGHTS[0].dir;
+  let t = (ballPos.z + WALL_Z) / key.z;
+  shadowMesh.position.set(ballPos.x - key.x * t, ballPos.y - key.y * t, -WALL_Z);
+  const sz = R * (1.15 + t * 0.25);
+  shadowMesh.scale.set(sz, sz / key.z, 1);
+  shadowMesh.material.uniforms.uOpacity.value = 0.06 * (1 - dark);
+  shadowMesh.material.uniforms.uSoft.value = 0.7 + t * 0.3;
+
+  const spot = LIGHTS[1].dir;
+  t = (ballPos.z + WALL_Z) / spot.z;
+  spillMesh.position.set(ballPos.x - spot.x * t, ballPos.y - spot.y * t, -WALL_Z);
+  const spill = R * 4.2;
+  spillMesh.scale.set(spill, spill, 1);
+  spillMesh.material.uniforms.uHole.value = (R * 1.05) / spill;
+  spillMesh.material.uniforms.uOpacity.value = 0.07 * dark;
+}
+
+function updateLighting(dt) {
+  dark += (darkTarget - dark) * (1 - Math.exp(-dt * 2.6));
+  if (Math.abs(darkTarget - dark) < 1e-3) dark = darkTarget;
+  for (const L of LIGHTS) {
+    L.weight = L.mode === "day" ? 1 - dark : dark;
+    L.light.intensity = L.intensity * L.weight;
+  }
+  scene.environmentIntensity = THREE.MathUtils.lerp(1.0, 0.05, dark);
+  core.material.color.setScalar(THREE.MathUtils.lerp(0.024, 0.006, dark));
+}
+
+// ---------------------------------------------------------------------------
+// Loop
+
+syncViewport(true);
+addEventListener("resize", () => syncViewport(false));
+
+let last = performance.now();
+let acc = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - last) / 1000, 0.1);
+  last = now;
+  syncViewport(false);
+
+  updateAnchor();
+  acc += dt;
+  let steps = 0;
+  while (acc >= DT && steps < MAX_STEPS) { physicsStep(); acc -= DT; steps++; }
+  if (steps === MAX_STEPS) acc = 0;
+
+  readBall();
+  ball.position.copy(ballPos);
+  ball.quaternion.copy(ballQuat);
+  writeChain();
+  updateLighting(dt);
+  updateTiles();
+  updateLight(now / 1000);
+  renderer.render(scene, camera);
+}
+
+readBall();
+updateTiles();
+renderer.render(scene, camera);
+stage.classList.add("is-ready");
+requestAnimationFrame(frame);
+
+// Exposed for debugging in the console.
+window.disco = { world, cut, reset: startReturn, setLights, get state() { return state; }, get loose() { return looseCount; }, get ropeLength() { return ropeLength; } };
