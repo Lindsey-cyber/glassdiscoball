@@ -9,6 +9,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const whoamiTerminal = document.getElementById('whoami-terminal');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+  // Portrait: try the public GCS image first, then a local copy, then a simple LM fallback.
   function handleProfileError() {
     if (!profilePhoto.dataset.localTried && profilePhoto.dataset.localFallback) {
       profilePhoto.dataset.localTried = 'true';
@@ -31,6 +32,8 @@ document.getElementById('year').textContent = new Date().getFullYear();
     whoamiToggle.textContent = opening ? '> whoami  −' : '> whoami';
   });
 
+  // The effect canvas is created dynamically and explicitly fixed to the viewport.
+  // This prevents it from ever entering document flow and creating blank space.
   const canvas = document.createElement('canvas');
   canvas.id = 'site-effects';
   canvas.setAttribute('aria-hidden', 'true');

@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>粉墙 · 马兰馨</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400&family=IBM+Plex+Mono:wght@300;400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&text=%E6%9D%A8%E6%9F%B3%E5%A0%86%E7%83%9F%E5%B8%98%E5%B9%95%E6%97%A0%E9%87%8D%E6%95%B0%E5%85%B0&display=swap">
+<style>
+/* Layout: a measured elevation of one garden wall (测绘立面). Ridge and tiles on top carry the page index; the stone plinth at the
+   foot is engraved with the 24 hours and can be dragged; two hairline call-outs annotate the window and the shadows.
+   The only moving thing is light, cast by the visitor's own clock.
+   Single deliberate look (a wall in daylight that dims to moonlight by the clock), so no OS dark variant. */
+html,body{background:#e9e5dc;margin:0}
+:root{
+  color-scheme:light;
+  --ink:#1f1f1d; --ink-70:rgba(31,31,29,.7); --ink-50:rgba(31,31,29,.5); --ink-35:rgba(31,31,29,.35); --ink-20:rgba(31,31,29,.2);
+  --tile-text:rgba(232,229,221,.62); --tile-text-on:#f2efe8;
+  --seal:#b23a26;
+  --f-ui:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --f-brush:"Ma Shan Zheng","STKaiti","KaiTi","Kaiti SC","Noto Serif SC","Songti SC","SimSun",serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+html,body{height:100%}
+body{color:var(--ink);font-family:var(--f-ui);font-weight:300;-webkit-font-smoothing:antialiased;overflow:hidden;touch-action:none}
+::selection{background:rgba(178,58,38,.18)}
+canvas{position:fixed;display:block}
+#wall{inset:0;width:100%;height:100%;z-index:1}
+#shade{inset:0;width:100%;height:100%;z-index:3;mix-blend-mode:multiply;pointer-events:none}
+#garden{z-index:4;pointer-events:none}
+#window{z-index:2;pointer-events:none}
+
+/* words brushed on the plaster: beneath the shade, so the bamboo crosses them */
+.poem{position:fixed;z-index:2;writing-mode:vertical-rl;pointer-events:none;font-size:var(--poem,40px);opacity:.86;transition:opacity 2.4s ease .8s}
+.poem p{margin:0;font-family:var(--f-brush);line-height:1.55;letter-spacing:.1em;color:#262624}
+.poem .by{display:flex;align-items:center;gap:.8em;margin-top:1.1em;font-family:var(--f-ui);font-size:11px;letter-spacing:.42em;color:var(--ink-50);line-height:1}
+.poem .by i{writing-mode:horizontal-tb;width:20px;height:20px;border-radius:2px;background:var(--seal);color:#f3ebdc;font-style:normal;font-size:11px;letter-spacing:0;display:grid;place-items:center;font-weight:400}
+.is-loading .poem{opacity:0}
+
+/* ---------- index on the ridge ---------- */
+.ridge{position:fixed;z-index:10;left:0;right:0;top:0;height:var(--ridge,34px);display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-left:max(22px,env(safe-area-inset-left,0px));padding-right:max(22px,env(safe-area-inset-right,0px));
+  font-size:12px;letter-spacing:.32em;color:var(--tile-text);transition:opacity 1.2s var(--ease) .2s}
+.is-loading .ridge{opacity:0}
+.ridge a,.ridge span{color:inherit;text-decoration:none;white-space:nowrap}
+.ridge .pages{display:flex;gap:clamp(14px,2.4vw,34px);align-items:center}
+.ridge .pages a:hover{color:var(--tile-text-on)}
+.ridge [aria-current="page"]{color:var(--tile-text-on);position:relative}
+.ridge [aria-current="page"]::after{content:"";position:absolute;left:calc(50% - .16em);bottom:-7px;width:3px;height:3px;border-radius:50%;background:var(--seal)}
+.ridge .soon{opacity:.45;cursor:default}
+.ridge .who{font-family:var(--f-mono);letter-spacing:.18em;font-size:11px}
+.ridge .front:hover{color:var(--tile-text-on)}
+
+/* ---------- call-outs ---------- */
+#notes{position:fixed;inset:0;z-index:6;pointer-events:none;width:100%;height:100%;overflow:visible}
+#notes line,#notes polyline{stroke:var(--ink-35);stroke-width:.75;fill:none;vector-effect:non-scaling-stroke;stroke-dasharray:var(--len);stroke-dashoffset:var(--len);transition:stroke-dashoffset 1.6s var(--ease)}
+#notes circle{fill:var(--ink-50)}
+#notes circle.ring{fill:none;stroke:var(--ink-35);stroke-width:.75}
+.ready #notes line,.ready #notes polyline{stroke-dashoffset:0}
+.note{position:fixed;z-index:6;pointer-events:none;display:flex;flex-direction:column;gap:3px;opacity:0;transform:translateY(4px);transition:opacity 1s var(--ease) .9s,transform 1s var(--ease) .9s}
+.ready .note{opacity:1;transform:none}
+.note b{font-weight:400;font-size:12px;letter-spacing:.34em;color:var(--ink-70)}
+.note small{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;color:var(--ink-50);font-variant-numeric:tabular-nums}
+.note.r{align-items:flex-end;text-align:right}
+.wind{position:fixed;z-index:6;margin:0;left:max(22px,env(safe-area-inset-left,0px));bottom:calc(var(--plinth,70px) + 18px);pointer-events:none;
+  font-size:12px;letter-spacing:.34em;color:var(--ink-50);opacity:0;transition:opacity 1.2s var(--ease) 1.6s,color .8s}
+.wind{display:flex;gap:.7em;align-items:flex-start}
+.wind .mk{letter-spacing:0;color:var(--seal);line-height:1.4}
+.wind em{display:block;margin-top:5px;font-style:normal;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink-50)}
+.ready .wind{opacity:1}
+.wind.felt{color:var(--ink-35)}
+.wind .w-m{display:none}
+@media (hover:none){ .wind .w-d{display:none} .wind .w-m{display:inline} }
+
+/* ---------- the engraved hour scale on the plinth ---------- */
+.scale{position:fixed;z-index:10;left:0;right:0;bottom:0;height:var(--plinth,70px);cursor:ew-resize;touch-action:none;
+  padding-left:max(22px,env(safe-area-inset-left,0px));padding-right:max(22px,env(safe-area-inset-right,0px));
+  padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;transition:opacity 1.2s var(--ease) .5s}
+.is-loading .scale{opacity:0}
+.scale svg{position:absolute;left:max(22px,env(safe-area-inset-left,0px));right:max(22px,env(safe-area-inset-right,0px));top:0;height:100%;width:calc(100% - 2*max(22px,env(safe-area-inset-left,0px)));overflow:visible}
+.scale text{font-family:var(--f-ui);font-size:12px;fill:rgba(38,38,34,.62);letter-spacing:.1em;paint-order:stroke}
+.scale .eng{filter:drop-shadow(0 1px 0 rgba(255,255,255,.45))}
+.scale .tick{stroke:rgba(38,38,34,.38);stroke-width:1}
+.scale .tick.major{stroke:rgba(38,38,34,.55)}
+.scale .now line{stroke:var(--seal);stroke-width:1.5}
+.scale .now text{font-family:var(--f-mono);font-size:11px;fill:var(--seal);letter-spacing:.04em}
+.scale .ghost line{stroke:rgba(38,38,34,.4);stroke-width:1;stroke-dasharray:2 3}
+.read{position:absolute;bottom:calc(10px + env(safe-area-inset-bottom,0px));right:max(22px,env(safe-area-inset-right,0px));display:flex;gap:14px;align-items:baseline;
+  font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;color:rgba(38,38,34,.62);font-variant-numeric:tabular-nums;pointer-events:auto}
+.read button{font:inherit;letter-spacing:.3em;font-family:var(--f-ui);font-size:11px;color:var(--seal);background:none;border:0;padding:6px 0 6px 6px;cursor:pointer}
+.read button[hidden]{display:none}
+.hint{position:absolute;bottom:calc(10px + env(safe-area-inset-bottom,0px));left:max(22px,env(safe-area-inset-left,0px));font-size:11px;letter-spacing:.34em;color:rgba(38,38,34,.55)}
+.scale:focus-visible{outline:1.5px solid var(--seal);outline-offset:-4px}
+
+@media (max-width:760px){
+  .ridge .who{display:none}
+  .ridge{letter-spacing:.2em}
+  .note.hide-m,#notes .hide-m{display:none}
+  .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .ridge,.scale,.poem,.note{transition:none} #notes line,#notes polyline{transition:none;stroke-dashoffset:0} }
+</style>
+</head>
+<body>
+
+<canvas id="wall" aria-hidden="true"></canvas>
+<div class="poem" id="poem" aria-label="杨柳堆烟，帘幕无重数 — 欧阳修《蝶恋花》"><p>杨柳堆烟<br>帘幕无重数</p><span class="by"><i>兰</i>欧阳修 · 蝶恋花</span></div>
+<span id="winSlot"></span>
+<canvas id="shade" aria-hidden="true"></canvas>
+<canvas id="garden" aria-hidden="true"></canvas>
+
+<svg id="notes" aria-hidden="true"></svg>
+<div class="note" id="nWin"><b>漏窗</b><small></small></div>
+<div class="note hide-m" id="nBam"><b>竹影</b><small id="nBamSub">近墙者锐 · 远墙者虚</small></div>
+<p class="wind" id="windHint"><span class="mk" aria-hidden="true">〰</span><span class="w-d">移动鼠标，便是一阵风 · 点一下，落一片叶<em>Your cursor is the wind — click to shake a leaf loose.</em></span><span class="w-m">手指划过，便是一阵风 · 轻点，落一片叶<em>Your finger is the wind — tap to shake a leaf loose.</em></span></p>
+<div class="note r hide-m" id="nEave"><b>檐影</b><small id="nEaveSub">深 0.00 m</small></div>
+
+<nav class="ridge" aria-label="四面">
+  <span class="who">LINDSEY MA</span>
+  <div class="pages">
+    <a href="qinglv.html">青绿</a>
+    <a href="fenqiang.html" aria-current="page">粉墙</a>
+    <a href="tianqing.html">天青</a>
+    <a href="yubi.html">玉璧</a>
+  </div>
+  <a class="front" href="index.html">正面 ↗</a>
+</nav>
+
+<div class="scale" id="scale" tabindex="0" role="slider" aria-label="一日之中的时刻，左右拖动或用方向键" aria-valuemin="0" aria-valuemax="24" aria-valuenow="12">
+  <svg id="scaleSvg"></svg>
+  <span class="hint">拖动石上刻度 · 看一日光影</span>
+  <div class="read"><span id="readout">--:-- · 午时 · 日高 0°</span><button id="nowBtn" type="button" hidden>回到此刻</button></div>
+</div>
+
+<script>
+document.documentElement.classList.add("is-loading");
+(() => {
+const root=document.documentElement, reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const wallC=document.getElementById("wall"), shadeC=document.getElementById("shade"), gardenC=document.getElementById("garden");
+const wctx=wallC.getContext("2d"), sctx=shadeC.getContext("2d"), gctx=gardenC.getContext("2d");
+let W,H,DPR,SD, cH,pH,rH, win;
+
+/* ---------------- noise ---------------- */
+function hash2(x,y){let h=Math.imul(x,374761393)+Math.imul(y,668265263)|0;h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967296;}
+function vn(x,y){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+  const a=hash2(xi,yi),b=hash2(xi+1,yi),c=hash2(xi,yi+1),d=hash2(xi+1,yi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
+const vn1=t=>vn(t,17.3);
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const sm=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t);};
+const mix=(a,b,t)=>a+(b-a)*t;
+const mixC=(a,b,t)=>[mix(a[0],b[0],t),mix(a[1],b[1],t),mix(a[2],b[2],t)];
+const rgb=c=>`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+
+
+
+/* ---------------- layout ---------------- */
+function layout(){
+  W=innerWidth; H=innerHeight; DPR=Math.min(2,devicePixelRatio||1); SD=Math.min(1.5,devicePixelRatio||1);
+  rH=Math.round(Math.max(32,Math.min(40,H*.042)));            // solid ridge, carries the index
+  cH=rH+Math.round(Math.max(30,Math.min(48,H*.05)));          // + tile course
+  pH=Math.round(Math.max(64,H*.09));                          // stone plinth, carries the hour scale
+  root.style.setProperty("--ridge",rH+"px"); root.style.setProperty("--plinth",pH+"px");
+  const mobile=W<760;
+  // S is the size every window is drawn to; the region it may occupy is S×S around (cx,cy)
+  const S=mobile?Math.min(W*.78,H*.36):Math.min(W*.3,H*.5);
+  const cx=mobile?W*.5:W*.62, cy=mobile?cH+H*.05+S*.5:(cH+(H-pH))/2-H*.01;
+  win={cx,cy,S,x:cx-S/2,y:cy-S/2,w:S,h:S,ft:S*.03};
+  const poemSize=mobile?Math.max(22,W*.062):Math.max(30,Math.min(44,H*.048));
+  const poem=document.getElementById("poem");
+  poem.style.setProperty("--poem",poemSize+"px");
+  if(mobile){ poem.style.left=""; poem.style.right=Math.max(20,W*.07)+"px"; poem.style.top=(cy+S*.5+H*.05)+"px"; }
+  else { poem.style.right=""; poem.style.left=(cx-S*.62-poemSize*4.4)+"px"; poem.style.top=(cy-S*.42)+"px"; }
+}
+
+/* ---------------- the wall ---------------- */
+function buildWall(){
+  wallC.width=W*DPR; wallC.height=H*DPR; wctx.setTransform(1,0,0,1,0,0);
+  const tmp=document.createElement("canvas"); tmp.width=W; tmp.height=H;
+  const t=tmp.getContext("2d"), img=t.createImageData(W,H), D=img.data;
+  const base=[237,233,224];
+  for(let y=0;y<H;y++){
+    const stain=sm(H*.58,H-pH,y), rain=sm(cH+H*.28,cH+4,y);
+    for(let x=0;x<W;x++){
+      let L=(vn(x/430,y/430)-.5)*10+(vn(x/95+7,y/95)-.5)*4.6+(vn(x/19,y/19)-.5)*2.4+(hash2(x,y)-.5)*5
+          +(vn((x+y)/46,(x-y)/240)-.5)*3;
+      let r=base[0]+L, g=base[1]+L, b=base[2]+L*1.05;
+      if(stain>0){const s=stain*Math.max(0,vn(x/170,y/70)*1.3-.35); r-=24*s; g-=19*s; b-=20*s;}
+      if(rain>0){const s=rain*Math.max(0,vn(x/5.5,y/280)-.55)*2.2; r-=8*s; g-=8*s; b-=7*s;}
+      const o=(y*W+x)*4; D[o]=r; D[o+1]=g; D[o+2]=b; D[o+3]=255;
+    }
+  }
+  t.putImageData(img,0,0);
+  wctx.drawImage(tmp,0,0,W*DPR,H*DPR);
+  wctx.setTransform(DPR,0,0,DPR,0,0);
+  const R=rng(41);
+  wctx.strokeStyle="rgba(95,88,76,.14)"; wctx.lineWidth=.6;
+  for(let k=0;k<4;k++){let x=R()*W,y=cH+R()*(H-cH-pH);wctx.beginPath();wctx.moveTo(x,y);
+    for(let i=0;i<24;i++){x+=(R()-.5)*7;y+=R()*6+1;wctx.lineTo(x,y);} wctx.stroke();}
+  drawPlinth(); drawCoping(); drawWindow();
+}
+function drawCoping(){
+  const g=wctx, tw=Math.max(20,Math.min(28,W/56)), th=cH-rH, lip=tw*.42;
+  // ridge
+  g.fillStyle="#252628"; g.fillRect(0,0,W,rH);
+  g.fillStyle="rgba(255,255,255,.08)"; g.fillRect(0,rH-3,W,1);
+  g.fillStyle="#1b1c1e"; g.fillRect(0,rH-2,W,2);
+  // tile course
+  g.fillStyle="#2f3134"; g.fillRect(0,rH,W,th);
+  for(let x=-tw;x<W+tw;x+=tw){
+    const gr=g.createLinearGradient(x,0,x+tw*.62,0);
+    gr.addColorStop(0,"#26282b"); gr.addColorStop(.35,"#56595d"); gr.addColorStop(.55,"#45484c"); gr.addColorStop(1,"#232528");
+    g.fillStyle=gr; g.fillRect(x,rH,tw*.62,th-lip*.6);
+    g.fillStyle="rgba(0,0,0,.25)"; for(let y=rH+th*.3;y<cH-lip;y+=th*.3) g.fillRect(x,y,tw*.62,1);
+  }
+  for(let x=-tw;x<W+tw;x+=tw){
+    const mx=x+tw*.81;
+    g.fillStyle="#2a2c2f"; g.beginPath(); g.moveTo(mx-tw*.26,cH-lip*.75); g.lineTo(mx+tw*.26,cH-lip*.75); g.lineTo(mx,cH+lip*.55); g.closePath(); g.fill();
+    const cx=x+tw*.31, cy=cH-lip*.55, r=tw*.3;
+    g.fillStyle="#2b2d30"; g.beginPath(); g.arc(cx,cy,r,0,6.283); g.fill();
+    g.strokeStyle="rgba(150,152,155,.42)"; g.lineWidth=1; g.beginPath(); g.arc(cx,cy,r*.68,0,6.283); g.stroke();
+    g.fillStyle="rgba(150,152,155,.38)"; g.beginPath(); g.arc(cx,cy,r*.18,0,6.283); g.fill();
+  }
+  g.fillStyle="rgba(255,255,255,.32)"; g.fillRect(0,cH+lip*.55,W,1);
+}
+function drawPlinth(){
+  const g=wctx, y0=H-pH, R=rng(7);
+  const gr=g.createLinearGradient(0,y0,0,H); gr.addColorStop(0,"#b0afa8"); gr.addColorStop(1,"#9d9c95");
+  g.fillStyle=gr; g.fillRect(0,y0,W,pH);
+  for(let i=0;i<W*pH/80;i++){const v=R()<.5;g.fillStyle=`rgba(${v?60:250},${v?60:250},${v?55:245},${R()*.05})`;g.fillRect(R()*W,y0+R()*pH,1.5,1.5);}
+  g.fillStyle="rgba(255,255,255,.5)"; g.fillRect(0,y0,W,1);
+  g.fillStyle="rgba(40,40,36,.24)"; g.fillRect(0,y0+1,W,2);
+  let x=-R()*200; while(x<W){ x+=180+R()*260; g.fillStyle="rgba(50,50,45,.2)"; g.fillRect(x,y0+3,1,pH-3); g.fillStyle="rgba(255,255,255,.18)"; g.fillRect(x+1,y0+3,1,pH-3);}
+  const d=g.createLinearGradient(0,y0-18,0,y0); d.addColorStop(0,"rgba(110,112,100,0)"); d.addColorStop(1,"rgba(110,112,100,.15)");
+  g.fillStyle=d; g.fillRect(0,y0-18,W,18);
+}
+
+/* ---------------- 漏窗: three windows, a click turns to the next ----------------
+   扇面冰裂 (a fan with a band of ice-crack around an open centre), 八角冰裂 (large pinwheel cracks), 方窗回纹 (fret in light wood). */
+const WINDOWS=[
+  {key:"fan", name:"扇面漏窗", sub:"冰裂纹环 · 中留扇心", col:"#2e2724", hi:"rgba(255,255,255,.34)", lo:"rgba(0,0,0,.35)"},
+  {key:"rect",name:"方窗",     sub:"回纹 · 亞字",     col:"#47312a", hi:"rgba(255,222,190,.26)", lo:"rgba(0,0,0,.38)"},
+  {key:"oct", name:"八角漏窗", sub:"回纹 · 中嵌十字", col:"#4e3c2f", hi:"rgba(255,225,195,.24)", lo:"rgba(0,0,0,.34)"},
+];
+let winIdx=0;   // always opens on the fan; a click turns to the square, then the octagon
+let WG={};  // geometry of the current window, window-local coordinates (origin at its centre)
+function geom(Wd){
+  const S=win.S;
+  if(Wd.key==="fan"){ const A=50*Math.PI/180, Ro=S*.74, Ri=Ro*.38, w=2*Ro*Math.sin(A), h=Ro-Ri*Math.cos(A);
+    return {w,h,A,Ro,Ri,py:-h/2+Ro,fr:Ro*.045,lw:Math.max(2,Ro*.02)}; }
+  if(Wd.key==="oct"){ const a=S*.45; return {w:a*2,h:a*2,a,fr:a*.095,lw:Math.max(4,a*.078)}; }
+  const w=S*.72, h=S*.9; return {w,h,fr:w*.06,lw:Math.max(3,w*.042)};
+}
+function outline(g,inset){
+  const G=WG; g.beginPath();
+  if(G.key==="fan"){
+    const ro=Math.max(2,G.Ro-inset), ri=G.Ri+inset, a0=-Math.PI/2-G.A, a1=-Math.PI/2+G.A, so=inset/ro, si=inset/ri;
+    g.arc(0,G.py,ro,a0+so,a1-so,false); g.arc(0,G.py,ri,a1-si,a0+si,true); g.closePath();
+  } else if(G.key==="oct"){
+    const r=Math.max(2,G.a-inset)/Math.cos(Math.PI/8);
+    for(let k=0;k<8;k++){const t=Math.PI/8+k*Math.PI/4; const x=Math.cos(t)*r,y=Math.sin(t)*r; k?g.lineTo(x,y):g.moveTo(x,y);} g.closePath();
+  } else { const hw=G.w/2-inset, hh=G.h/2-inset; g.rect(-hw,-hh,hw*2,hh*2); }
+}
+// a bar: soft shadow, body, lit edge (and for the dark fan, a rounded sheen down the middle)
+function bars(g,lw,fn){
+  const Wd=WINDOWS[winIdx];
+  g.lineCap="round"; g.lineJoin="round";
+  g.save(); g.translate(lw*.25,lw*.3); g.strokeStyle=Wd.lo; g.lineWidth=lw; g.beginPath(); fn(); g.stroke(); g.restore();
+  g.strokeStyle=Wd.col; g.lineWidth=lw; g.beginPath(); fn(); g.stroke();
+  g.save(); g.translate(-lw*.18,-lw*.22); g.strokeStyle=Wd.hi; g.lineWidth=Math.max(.8,lw*(Wd.key==="fan"?.28:.2)); g.beginPath(); fn(); g.stroke(); g.restore();
+}
+// points around a fan outline shrunk by `inset`, sampled with fixed counts per side so two loops correspond
+function fanLoop(inset){
+  const G=WG, ro=G.Ro-inset, ri=G.Ri+inset, a0=-Math.PI/2-G.A, a1=-Math.PI/2+G.A, so=inset/ro, si=inset/ri, P=[];
+  const nA=28, nS=6, nI=16;
+  for(let i=0;i<nA;i++){const a=a0+so+(a1-so-a0-so)*i/nA; P.push([Math.cos(a)*ro,G.py+Math.sin(a)*ro]);}
+  const oe=[Math.cos(a1-so)*ro,G.py+Math.sin(a1-so)*ro], ie=[Math.cos(a1-si)*ri,G.py+Math.sin(a1-si)*ri];
+  for(let i=0;i<nS;i++){const t=i/nS; P.push([mix(oe[0],ie[0],t),mix(oe[1],ie[1],t)]);}
+  for(let i=0;i<nI;i++){const a=a1-si-(a1-si-a0-si)*i/nI; P.push([Math.cos(a)*ri,G.py+Math.sin(a)*ri]);}
+  const is=[Math.cos(a0+si)*ri,G.py+Math.sin(a0+si)*ri], os=[Math.cos(a0+so)*ro,G.py+Math.sin(a0+so)*ro];
+  for(let i=0;i<nS;i++){const t=i/nS; P.push([mix(is[0],os[0],t),mix(is[1],os[1],t)]);}
+  return P;
+}
+function lattice(g){
+  const G=WG, R=rng(5+winIdx*17);
+  g.save(); outline(g,G.fr); g.clip();
+  if(G.key==="fan"){
+    const band=(G.Ro-G.Ri)*.3, out=fanLoop(G.fr), inn=fanLoop(G.fr+band), n=out.length;
+    bars(g,G.lw*1.25,()=>{ outline(g,G.fr+band); });            // the inner fan frame
+    const nodes=[];
+    for(let i=0;i<n;i+=2){ const t=(i/2)%2?.66:.36, j=(R()-.5)*.14; const o=out[i], q=inn[i]; nodes.push([mix(q[0],o[0],t+j),mix(q[1],o[1],t+j),(i/2)%2,i]); }
+    // pick every crack once, then draw it; bars() traces the path three times (shadow, body, lit edge)
+    const segs=[];
+    for(let k=0;k<nodes.length;k++){
+      const a=nodes[k], b=nodes[(k+1)%nodes.length];
+      segs.push([a,b]);
+      const idx=(a[3]+(R()<.5?1:-1)+n)%n; segs.push([a,a[2]?out[idx]:inn[idx]]);
+    }
+    bars(g,G.lw,()=>{ for(const [a,b] of segs){ g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); } });
+  } else if(G.key==="oct"){
+    // 八角回纹: a square grid in the outer ring, an inner octagon, and inside it four mirrored 回纹 hooks around a cross
+    const A=G.a-G.fr, B=A*.7;
+    const oct=(ap)=>{const r=ap/Math.cos(Math.PI/8); for(let k=0;k<8;k++){const t=Math.PI/8+k*Math.PI/4; const x=Math.cos(t)*r,y=Math.sin(t)*r; k?g.lineTo(x,y):g.moveTo(x,y);} g.closePath();};
+    // outer ring grid, kept out of the inner octagon
+    g.save(); g.beginPath(); outline(g,G.fr); oct(B); g.clip("evenodd");
+    bars(g,G.lw,()=>{ for(const t of [-.62,-.3,.3,.62]){ g.moveTo(t*A,-A*1.1); g.lineTo(t*A,A*1.1); g.moveTo(-A*1.1,t*A); g.lineTo(A*1.1,t*A); } });
+    g.restore();
+    bars(g,G.lw*1.1,()=>{ g.beginPath(); oct(B); });
+    g.save(); g.beginPath(); oct(B); g.clip();
+    const P=(x,y)=>[x*B,y*B], hook=[[-.13,-.1],[-.13,-.76],[-.62,-.76],[-.62,-.26],[-.33,-.26],[-.33,-.56],[-.49,-.56],[-.49,-.41]];
+    bars(g,G.lw,()=>{
+      for(const [mx,my] of [[1,1],[-1,1],[1,-1],[-1,-1]]){
+        hook.forEach(([x,y],i)=>{const p=P(x*mx,y*my); i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]);});
+      }
+      g.moveTo(-B*1.1,-B*.1); g.lineTo(B*1.1,-B*.1); g.moveTo(-B*1.1,B*.1); g.lineTo(B*1.1,B*.1);   // the band through the middle
+    });
+    bars(g,G.lw*1.7,()=>{ g.moveTo(0,-B*.26); g.lineTo(0,B*.26); g.moveTo(-B*.26,0); g.lineTo(B*.26,0); });  // the cross at the heart
+    g.restore();
+  } else {
+    const X=G.w/2-G.fr, Y=G.h/2-G.fr, P=(x,y)=>[x*X,y*Y];
+    const seg=(a,b)=>{const p=P(...a),q=P(...b); g.moveTo(p[0],p[1]); g.lineTo(q[0],q[1]);};
+    const poly=pts=>{pts.forEach((p,i)=>{const q=P(...p); i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]);}); g.closePath();};
+    bars(g,G.lw,()=>{
+      poly([[-.72,-.78],[.72,-.78],[.72,.78],[-.72,.78]]);                         // inner ring
+      for(const s of [1,-1]){ seg([0,s],[0,s*.78]); seg([s,0],[s*.72,0]); seg([.4,s],[.4,s*.78]); seg([-.4,s],[-.4,s*.78]); seg([s,.42],[s*.72,.42]); seg([s,-.42],[s*.72,-.42]); }
+      for(const sx of [1,-1]) for(const sy of [1,-1]){ seg([sx*.38,sy*.78],[sx*.38,sy*.42]); seg([sx*.38,sy*.42],[sx*.72,sy*.42]); }  // corner squares
+      poly([[-.2,-.58],[.2,-.58],[.2,-.2],[.52,-.2],[.52,.2],[.2,.2],[.2,.58],[-.2,.58],[-.2,.2],[-.52,.2],[-.52,-.2],[-.2,-.2]]); // 亞 cross
+      seg([0,-.58],[0,-.78]); seg([0,.58],[0,.78]); seg([.52,0],[.72,0]); seg([-.52,0],[-.72,0]);
+      poly([[-.06,-.15],[.06,-.15],[.06,-.06],[.15,-.06],[.15,.06],[.06,.06],[.06,.15],[-.06,.15],[-.06,.06],[-.15,.06],[-.15,-.06],[-.06,-.06]]); // centre plus
+      seg([0,-.15],[0,-.58]); seg([0,.15],[0,.58]); seg([.15,0],[.52,0]); seg([-.15,0],[-.52,0]);
+    });
+  }
+  g.restore();
+}
+const winC=document.createElement("canvas"); winC.id="window"; winC.setAttribute("aria-hidden","true");
+const winCtx=winC.getContext("2d");
+document.getElementById("winSlot").replaceWith(winC);
+function drawWindow(){
+  const Wd=WINDOWS[winIdx]; WG=Object.assign({key:Wd.key},geom(Wd));
+  const hw=WG.w/2, hh=WG.h/2, m=Math.max(WG.w,WG.h)*.06+6, s=SD;
+  win.x=win.cx-hw; win.y=win.cy-hh; win.w=WG.w; win.h=WG.h;
+  const CW=Math.ceil((hw+m)*2*s), CH=Math.ceil((hh+m)*2*s);
+  const place=c=>Object.assign(c.style,{left:(win.cx-hw-m)+"px",top:(win.cy-hh-m)+"px",width:(hw+m)*2+"px",height:(hh+m)*2+"px"});
+  const T=g=>g.setTransform(s,0,0,s,(hw+m)*s,(hh+m)*s);
+  winC.width=CW; winC.height=CH; place(winC);
+  const g=winCtx; T(g); g.clearRect(-hw-m,-hh-m,(hw+m)*2,(hh+m)*2);
+  const mold=Math.max(WG.w,WG.h)*.035;
+  // lime moulding, then the frame band
+  g.fillStyle="#dedad0"; outline(g,-mold); g.fill();
+  g.strokeStyle="rgba(60,58,52,.22)"; g.lineWidth=1; outline(g,-mold); g.stroke();
+  g.fillStyle=Wd.col; outline(g,0); g.fill();
+  g.lineWidth=Math.max(1,WG.fr*.22); g.strokeStyle=Wd.hi; outline(g,WG.fr*.3); g.stroke();
+  g.lineWidth=1; g.strokeStyle=Wd.lo; outline(g,WG.fr*.7); g.stroke();
+  g.save(); g.globalCompositeOperation="destination-out"; g.fillStyle="#000"; outline(g,WG.fr); g.fill(); g.restore();
+  lattice(g);
+  // the garden through the openings
+  gardenC.width=CW; gardenC.height=CH; place(gardenC);
+  const gg=gctx; gg.setTransform(1,0,0,1,0,0); gg.clearRect(0,0,CW,CH);
+  const sky=gg.createLinearGradient(0,0,0,CH); sky.addColorStop(.05,"#e8ebe0"); sky.addColorStop(.4,"#b6c19d"); sky.addColorStop(.75,"#6e855f"); sky.addColorStop(1,"#3c4f38");
+  gg.fillStyle=sky; gg.fillRect(0,0,CW,CH);
+  const Gr=rng(91), cols=["#5f7a4c","#7d9558","#9cae70","#3f5639","#d0d3a4","#2e4230","#8a8f7a"];
+  for(let i=0;i<90;i++){
+    const cx=Gr()*CW, cy=(.1+Gr()*.95)*CH, rr=(.03+Gr()*.15)*Math.max(CW,CH), c=cols[(Gr()*cols.length)|0];
+    const rad=gg.createRadialGradient(cx,cy,0,cx,cy,rr); rad.addColorStop(0,c); rad.addColorStop(1,c+"00");
+    gg.globalAlpha=.28+Gr()*.4; gg.fillStyle=rad; gg.fillRect(cx-rr,cy-rr,rr*2,rr*2);
+  }
+  gg.globalAlpha=1;
+  const lc=document.createElement("canvas"); lc.width=CW; lc.height=CH; const l=lc.getContext("2d"); T(l); lattice(l);
+  T(gg); gg.globalCompositeOperation="destination-in"; gg.fillStyle="#000"; outline(gg,WG.fr); gg.fill();
+  gg.setTransform(1,0,0,1,0,0);
+  gg.globalCompositeOperation="source-atop"; gg.globalAlpha=.36; gg.filter="blur(2px)"; gg.drawImage(lc,3*s,4*s); gg.filter="none"; gg.globalAlpha=1;
+  gg.globalCompositeOperation="destination-out"; gg.drawImage(lc,0,0);
+  gg.globalCompositeOperation="source-atop"; T(gg);
+  gg.save(); gg.translate(WG.fr*.4,WG.fr*.5); gg.lineWidth=WG.fr*1.2; gg.strokeStyle="rgba(20,18,14,.3)"; gg.filter="blur(4px)"; outline(gg,WG.fr); gg.stroke(); gg.filter="none"; gg.restore();
+  gg.globalCompositeOperation="source-over"; gg.setTransform(1,0,0,1,0,0);
+  const nWin=document.getElementById("nWin");
+  if(nWin){ nWin.querySelector("b").textContent=Wd.name; nWin.querySelector("small").textContent=Wd.sub+" · 点窗换一扇"; }
+}
+
+/* ---------------- bamboo ---------------- */
+// three stands at different distances from the wall: near = crisp, far = soft
+const LAYERS=[
+  {name:"far", res:1/7,   dm:.9,  alpha:.62, n:4, cw:9,  sp:74, bl:230, leaf:62, wid:9,  depth:2.2, seed:3},
+  {name:"mid", res:1/3.4, dm:.5,  alpha:.8, n:3, cw:12, sp:94, bl:300, leaf:80, wid:11, depth:1.2, seed:11},
+  {name:"near",res:1/1.35,dm:.18, alpha:.95, n:2, cw:16, sp:112,bl:360, leaf:98, wid:14, depth:.4, seed:29},
+];
+let EX=.32, EY=.7; // extra room around the screen so a shifted shadow never shows an edge
+function genLayer(L){
+  const R=rng(L.seed*997+Math.round(W/97)), scale=Math.min(1.25,Math.max(.75,H/900));
+  L.culms=[];
+  // keep the middle of the wall quiet: stems stand at the sides, only leaves reach in
+  const slots=L.name==="near"?[.04+R()*.04,1.03+R()*.03]:L.name==="mid"?[.11+R()*.04,.2+R()*.04,.94+R()*.04]:[.01,.27+R()*.05,.8+R()*.05,.99];
+  for(let i=0;i<L.n;i++){
+    const c={x:slots[i%slots.length]*W, w:L.cw*scale*(.8+R()*.4), lean:(R()-.5)*.09, amp:3+R()*4, w0:.35+R()*.25, ph:R()*6.28, flex:.8+R()*.5, br:[], nodes:[]};
+    const y0=H+80, yT=-H*EY;
+    c.y0=y0; c.yT=yT;
+    const sp=L.sp*scale*(.85+R()*.3);
+    let side=R()<.5?1:-1;
+    for(let y=y0-sp*(.6+R());y>yT;y-=sp*(.9+R()*.25)){
+      c.nodes.push(y);
+      if(y<H*.58 && R()<.72){
+        side=-side;
+        if(c.x<W*.35 && R()<.7) side=1; else if(c.x>W*.7 && R()<.7) side=-1;
+        const b={y, side, ang:side*(.55+R()*.6), len:L.bl*scale*(.45+R()*.8), amp:.03+R()*.03, w0:.6+R()*.6, ph:R()*6.28, cl:[]};
+        const nc=2+Math.floor(R()*2);
+        for(let k=0;k<nc;k++){
+          const t=.45+k/(nc)*.55+R()*.08, n=4+Math.floor(R()*4), lv=[];
+          const center=Math.PI/2 - side*(.3+R()*.55);
+          for(let j=0;j<n;j++) lv.push({a:center+(j-(n-1)/2)*(.2+R()*.1)+(R()-.5)*.24, len:L.leaf*scale*(.7+R()*.6), wid:L.wid*scale*(.7+R()*.45), w0:1.2+R()*1.6, ph:R()*6.28, curl:(R()-.5)*.6});
+          b.cl.push({t:Math.min(1,t),lv});
+        }
+        c.br.push(b);
+      }
+    }
+    L.culms.push(c);
+  }
+  L.c=document.createElement("canvas");
+  L.c.width=Math.ceil(W*(1+2*EX)*L.res); L.c.height=Math.ceil(H*(1+EY)*L.res);
+  L.g=L.c.getContext("2d");
+}
+
+let wind=0, gust=0, ptr={x:-1e4,vx:0,lx:null,lt:0}, falling=[], nextFall=0;
+function windAt(x){ return gust + ptr.vx*Math.exp(-Math.pow((x-ptr.x)/(W*.28),2)); }
+function leafPath(g,x,y,a,len,wid,curl){
+  const dx=Math.cos(a),dy=Math.sin(a),nx=-dy,ny=dx;
+  const tx=x+dx*len+nx*len*curl*.18, ty=y+dy*len+ny*len*curl*.18;
+  const mx=x+dx*len*.3, my=y+dy*len*.3;
+  g.moveTo(x,y);
+  g.quadraticCurveTo(mx+nx*wid,my+ny*wid,tx,ty);
+  g.quadraticCurveTo(mx-nx*wid*.8,my-ny*wid*.8,x,y);
+}
+function drawLayer(L,t,col){
+  const g=L.g; g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,L.c.width,L.c.height);
+  g.setTransform(L.res,0,0,L.res,W*EX*L.res,H*EY*L.res);
+  g.fillStyle=g.strokeStyle=col; g.lineCap="round";
+  const depthW=1+L.depth*.25;
+  for(const c of L.culms){
+    const wv=windAt(c.x)*c.flex*depthW;
+    const sway=Math.sin(t*c.w0+c.ph)*c.amp + Math.sin(t*c.w0*2.3+c.ph*1.7)*c.amp*.3 + wv*46;
+    const span=c.y0-c.yT;
+    const X=y=>c.x+c.lean*(c.y0-y)+sway*Math.pow((c.y0-y)/span,1.8);
+    // culm
+    g.lineWidth=c.w; g.beginPath(); g.moveTo(X(c.y0),c.y0);
+    for(let y=c.y0;y>=c.yT;y-=30) g.lineTo(X(y),y); g.stroke();
+    // nodes
+    g.lineWidth=2.2;
+    for(const y of c.nodes){const x=X(y); g.beginPath(); g.moveTo(x-c.w*.78,y); g.lineTo(x+c.w*.78,y); g.stroke();}
+    // branches and leaf clusters
+    g.beginPath();
+    for(const b of c.br){
+      const px=X(b.y), py=b.y;
+      const a=b.ang + Math.sin(t*b.w0+b.ph)*b.amp + wv*.55*Math.sign(b.side+wv*.0001)*.5 + wv*.35;
+      const dx=Math.sin(a), dy=-Math.cos(a);
+      const ex=px+dx*b.len, ey=py+dy*b.len+b.len*.28;
+      g.moveTo(px,py); g.quadraticCurveTo(px+dx*b.len*.55,py+dy*b.len*.55,ex,ey);
+    }
+    g.lineWidth=Math.max(1.1,c.w*.13); g.stroke();
+    g.beginPath();
+    for(const b of c.br){
+      const px=X(b.y), py=b.y;
+      const a=b.ang + Math.sin(t*b.w0+b.ph)*b.amp + wv*.35;
+      const dx=Math.sin(a), dy=-Math.cos(a);
+      for(const cl of b.cl){
+        const tt=cl.t, qx=px+dx*b.len*tt, qy=py+dy*b.len*tt+b.len*.28*tt*tt;
+        for(const lf of cl.lv){
+          const fl=Math.sin(t*lf.w0+lf.ph)*(.07+Math.abs(wv)*.5)+wv*.45;
+          leafPath(g,qx,qy,lf.a+fl,lf.len,lf.wid*.5,lf.curl);
+        }
+      }
+    }
+    g.fill();
+  }
+  if(L.name==="near"){
+    g.beginPath();
+    for(const f of falling) leafPath(g,f.x,f.y,f.a,f.len,f.wid*.5,.2);
+    g.fill();
+  }
+}
+function spawnFall(t,nearX){
+  const L=LAYERS[1+(Math.random()<.5?1:0)];
+  let best=null,bd=1e9;
+  for(const c of L.culms) for(const b of c.br){
+    const x=c.x+Math.sin(b.ang)*b.len*.8, y=b.y-Math.cos(b.ang)*b.len*.8;
+    if(y<cH+10||y>H*.7) continue;
+    const d=nearX===undefined?Math.random():Math.abs(x-nearX)+Math.random()*120;
+    if(d<bd){bd=d;best={x,y};}
+  }
+  if(!best||falling.length>8) return;
+  const leaf=LAYERS[2];
+  falling.push({x:best.x, y:best.y, a:Math.PI/2+(Math.random()-.5), len:leaf.leaf*(.65+Math.random()*.25), wid:leaf.wid*.8, vy:.45+Math.random()*.35, ph:Math.random()*6.28, sp:.9+Math.random()*.8});
+}
+
+/* ---------------- light, by the visitor's own clock ----------------
+   A south-facing wall at about 31°N. Every stem stands parallel to the wall, so its shadow is the same shape, only moved:
+   sideways by distance × tan(azimuth) and down by distance × tan(altitude) / cos(azimuth). Sun and moon each cast their own
+   shadow set; at dawn and dusk one fades out while the other fades in, they are never blended into a swing. */
+const SHI="子丑寅卯辰巳午未申酉戌亥";
+const shiOf=h=>SHI[Math.floor(((h+1)%24)/2)];
+const MOON_NAMES=["新月","蛾眉月","上弦月","盈凸月","满月","亏凸月","下弦月","残月"];
+const RAD=Math.PI/180, LAT_=31*RAD;
+function sky(Hdeg,dec){ // altitude, and azimuth from south (positive = west)
+  const H=Hdeg*RAD, sa=Math.sin(LAT_)*Math.sin(dec)+Math.cos(LAT_)*Math.cos(dec)*Math.cos(H);
+  const alt=Math.asin(Math.max(-1,Math.min(1,sa)));
+  const az=Math.atan2(Math.sin(H),Math.cos(H)*Math.sin(LAT_)-Math.tan(dec)*Math.cos(LAT_));
+  return {alt,az};
+}
+function onWall(b){ return b.alt>0&&Math.abs(b.az)<Math.PI/2 ? Math.cos(b.alt)*Math.cos(b.az) : 0; }
+function shift(b,dm){ // shadow offset, in px, of something dm metres in front of the wall
+  const pxm=H/3.4, tx=Math.max(-2.2,Math.min(2.2,Math.tan(b.az))), ty=Math.min(2.2,Math.tan(Math.max(0,b.alt))/Math.max(.35,Math.cos(b.az)));
+  return [dm*tx*pxm, dm*ty*pxm];
+}
+const clampC=c=>c.map(v=>Math.max(0,Math.min(255,v)));
+const addC=(a,b,k)=>[a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k];
+function light(h){
+  const now=new Date(), doy=Math.floor((now-new Date(now.getFullYear(),0,0))/864e5);
+  const dec=23.44*RAD*Math.sin(2*Math.PI*(284+doy)/365);
+  const sun=sky((h-12)*15,dec);
+  // moon: phase from the date; it crosses the meridian about 50 min later each day
+  const syn=29.530588853, ref=Date.UTC(2000,0,6,18,14);
+  const d=new Date(now.getFullYear(),now.getMonth(),now.getDate(),Math.floor(h),Math.round((h%1)*60));
+  const p=(((d-ref)/864e5)/syn%1+1)%1, illum=(1-Math.cos(2*Math.PI*p))/2;
+  const transit=(12+p*24)%24;
+  const moon=sky((((h-transit+36)%24)-12)*15*(24/24.84), dec*Math.cos(2*Math.PI*p));
+  const altD=sun.alt/RAD;
+  const tw=sm(-8,6,altD);
+  const Is=onWall(sun)*cloud, Im=onWall(moon)*illum*.55;
+  let amb=mixC([86,92,112],[168,170,176],tw);
+  amb=addC(amb,[22,26,36],illum*sm(0,10,moon.alt/RAD)*(1-tw));
+  const sunC=mixC([190,122,62],[124,118,104],sm(4,40,altD)), moonC=[124,134,166];
+  const base=clampC(addC(addC(amb,sunC,Is),moonC,Im));
+  const shS=clampC(addC(base,sunC,-Is*.9)), shM=clampC(addC(base,moonC,-Im*.92));
+  const lum=(base[0]+base[1]+base[2])/3;
+  const dom=Is>=Im?sun:moon;
+  return {
+    base, sun, moon, Is, Im, shS, shM, dom,
+    day:tw, alt:Math.max(0,altD), azDeg:180+sun.az/RAD,
+    moonInfo:{name:MOON_NAMES[Math.round(p*8)%8], alt:Math.max(0,moon.alt/RAD), illum},
+    garden:Math.max(.38,Math.min(1.05,lum/235)),
+  };
+}
+
+/* ---------------- shade compositing ---------------- */
+let hour=12, hourT=12, scrubbed=false, intro=reduce?1:0, cloud=1;
+const EAVE_M=.32;
+function composite(t){
+  const Lt=light(hour);
+  sctx.setTransform(SD,0,0,SD,0,0);
+  sctx.globalCompositeOperation="source-over"; sctx.globalAlpha=1;
+  sctx.fillStyle=rgb(mixC([238,236,230],Lt.base,intro)); sctx.fillRect(0,0,W,H);
+  for(const L of LAYERS) drawLayer(L,t*.001,"#000");
+  sctx.globalCompositeOperation="darken";
+  for(const [b,I,col] of [[Lt.sun,Lt.Is,Lt.shS],[Lt.moon,Lt.Im,Lt.shM]]){
+    if(I<.004) continue;
+    const c=rgb(col), k=intro*Math.min(1,I*6);
+    // eave shadow
+    const eh=shift(b,EAVE_M)[1];
+    const eg=sctx.createLinearGradient(0,cH,0,cH+eh+12);
+    const soft=18+eh*.25, eg2=sctx.createLinearGradient(0,cH,0,cH+eh+soft);
+    eg2.addColorStop(0,c); eg2.addColorStop(Math.max(.01,(eh-soft*.4)/(eh+soft)),c); eg2.addColorStop(1,rgb(Lt.base));
+    sctx.globalAlpha=k*.9; sctx.setTransform(SD,0,0,SD,0,0); sctx.fillStyle=eg2; sctx.fillRect(0,cH,W,eh+soft);
+    // bamboo, tinted to this light's shadow colour
+    for(const L of LAYERS){
+      const [dx,dy]=shift(b,L.dm);
+      tint(L,c);
+      sctx.globalAlpha=L.alpha*k;
+      sctx.setTransform(SD,0,0,SD,SD*dx,SD*dy);
+      sctx.drawImage(L.tc,-W*EX,-H*EY,W*(1+2*EX),H*(1+EY));
+    }
+  }
+  sctx.globalAlpha=1; sctx.globalCompositeOperation="source-over"; sctx.setTransform(SD,0,0,SD,0,0);
+  return Lt;
+}
+// recolour a layer's black silhouettes
+function tint(L,c){
+  if(!L.tc){L.tc=document.createElement("canvas");L.tg=L.tc.getContext("2d");}
+  if(L.tc.width!==L.c.width||L.tc.height!==L.c.height){L.tc.width=L.c.width;L.tc.height=L.c.height;}
+  const g=L.tg; g.globalCompositeOperation="copy"; g.drawImage(L.c,0,0);
+  g.globalCompositeOperation="source-in"; g.fillStyle=c; g.fillRect(0,0,L.tc.width,L.tc.height);
+  g.globalCompositeOperation="source-over";
+}
+
+
+/* ---------------- call-outs (measured-drawing style) ---------------- */
+const NS="http://www.w3.org/2000/svg", notes=document.getElementById("notes");
+function el(t,a){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);notes.appendChild(e);return e;}
+function placeNotes(){
+  notes.innerHTML=""; notes.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const mobile=W<760, line=(pts)=>{const p=el("polyline",{points:pts.map(q=>q.join(",")).join(" ")});
+    let L=0; for(let i=1;i<pts.length;i++) L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); p.style.setProperty("--len",L); return p;};
+  // window: from its upper-right corner, up and out
+  const wx=win.x+win.w*.92, wy=win.y+win.h*.14, ex=Math.min(W-150,wx+(mobile?18:46)), ey=mobile?win.y-34:wy-48;
+  el("circle",{cx:wx,cy:wy,r:2.2});
+  line([[wx,wy],[ex,ey],[ex+(mobile?40:70),ey]]);
+  const nWin=document.getElementById("nWin");
+  Object.assign(nWin.style,{left:(ex+(mobile?44:76))+"px",top:(ey-10)+"px",right:"",transform:""});
+  if(mobile){ notes.querySelectorAll("polyline,circle").forEach(n=>n.classList.add("hide-m"));
+    Object.assign(nWin.style,{left:"20px",right:"",top:(win.y+win.h+10)+"px"}); }
+  // bamboo: a ring on the near stem's shadow, lower left
+  const bam=el("g",{id:"bamNote",class:"hide-m"});
+  const ring=document.createElementNS(NS,"circle"); ring.setAttribute("r",9); ring.setAttribute("class","ring"); bam.appendChild(ring);
+  const bl=document.createElementNS(NS,"polyline"); bl.style.setProperty("--len",260); bam.appendChild(bl);
+  // eave shadow: a dimension line hanging under the coping
+  const dx=W*.2, d0=cH+2;
+  const eave=el("line",{x1:dx,y1:d0,x2:dx,y2:d0+40,id:"eaveLine"}); eave.style.setProperty("--len",400);
+  el("line",{x1:dx-6,y1:d0,x2:dx+6,y2:d0}).style.setProperty("--len",12);
+  const cap=el("line",{x1:dx-6,y1:d0+40,x2:dx+6,y2:d0+40,id:"eaveCap"}); cap.style.setProperty("--len",12);
+  const nE=document.getElementById("nEave"); Object.assign(nE.style,{left:"",right:(W-dx+14)+"px",top:(d0+6)+"px"});
+}
+function updateBamboo(Lt){
+  const g=document.getElementById("bamNote"); if(!g||!LAYERS[2].culms) return;
+  const L=LAYERS[2], c=L.culms[0], sy=H-pH-H*.22, [dx,dy]=shift(Lt.dom,L.dm), y=sy-dy;
+  const bx=Math.max(24,Math.min(W*.4,c.x+c.lean*(c.y0-y)+dx));
+  const ring=g.querySelector("circle"), pl=g.querySelector("polyline");
+  ring.setAttribute("cx",bx); ring.setAttribute("cy",sy);
+  const tx=bx+Math.max(60,W*.06), ty=sy-42;
+  pl.setAttribute("points",`${bx+7},${sy-6} ${tx},${ty} ${tx+56},${ty}`);
+  Object.assign(document.getElementById("nBam").style,{left:(tx+62)+"px",top:(ty-10)+"px"});
+}
+function updateEave(Lt){
+  const l=document.getElementById("eaveLine"), c=document.getElementById("eaveCap"); if(!l) return;
+  const lit=Math.max(Lt.Is,Lt.Im)>.004, d=lit?shift(Lt.dom,EAVE_M)[1]:0, y=cH+2+Math.max(4,d);
+  l.setAttribute("y2",y); c.setAttribute("y1",y); c.setAttribute("y2",y);
+  document.getElementById("nEaveSub").textContent=lit?`深 ${(d/(H/3.4)).toFixed(2)} m · `+(Lt.Is>=Lt.Im?`日高 ${Math.round(Lt.alt)}°`:`月高 ${Math.round(Lt.moonInfo.alt)}°`):"无直射 · 无檐影";
+}
+
+/* ---------------- the hour scale ---------------- */
+const scale=document.getElementById("scale"), svg=document.getElementById("scaleSvg"), readout=document.getElementById("readout"), nowBtn=document.getElementById("nowBtn");
+const SHI2="子丑寅卯辰巳午未申酉戌亥";
+let SW=0, nowG=null, ghostG=null;
+function buildScale(){
+  SW=svg.getBoundingClientRect().width; const h=pH;
+  svg.setAttribute("viewBox",`0 0 ${SW} ${h}`); svg.innerHTML="";
+  const mk=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;};
+  const g=mk("g",{class:"eng"}), y0=h*.22, mobile=W<760;
+  for(let i=0;i<=24*(mobile?1:2);i++){
+    const hr=i/(mobile?1:2), x=SW*hr/24, major=hr%2===1;
+    mk("line",{x1:x,y1:y0,x2:x,y2:y0+(major?h*.2:Number.isInteger(hr)?h*.1:h*.05),class:"tick"+(major?" major":"")},g);
+  }
+  for(let k=0;k<12;k++){ // 时辰 are centred on the odd hours' boundaries: 子 = 23–1, centred on 0
+    const x=SW*((k*2)%24)/24;
+    const tx=k===0?8:x; const t=mk("text",{x:tx,y:y0+h*.42,"text-anchor":k===0?"start":"middle"},g); t.textContent=SHI2[k];
+  }
+  const t24=mk("text",{x:SW-2,y:y0+h*.42,"text-anchor":"end"},g); t24.textContent="子";
+  ghostG=mk("g",{class:"ghost"}); mk("line",{x1:0,y1:2,x2:0,y2:h*.62},ghostG);
+  nowG=mk("g",{class:"now"}); mk("line",{x1:0,y1:2,x2:0,y2:h*.62},nowG); const nt=mk("text",{x:6,y:h*.17},nowG); nt.textContent="";
+}
+function setScale(h){
+  if(!nowG) return; const x=SW*h/24;
+  nowG.setAttribute("transform",`translate(${x.toFixed(1)},0)`);
+  nowG.querySelector("text").textContent=fmt(h);
+  const nt=nowG.querySelector("text"); nt.setAttribute("x", x>SW-60?-44:6);
+  ghostG.style.display=scrubbed?"":"none";
+  ghostG.setAttribute("transform",`translate(${(SW*localHour()/24).toFixed(1)},0)`);
+  scale.setAttribute("aria-valuenow",h.toFixed(1)); scale.setAttribute("aria-valuetext",fmt(h));
+}
+function hourFromX(clientX){const r=svg.getBoundingClientRect();return Math.max(0,Math.min(23.99,(clientX-r.left)/r.width*24));}
+let dragging=false;
+scale.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;dragging=true;scale.setPointerCapture(e.pointerId);scrubbed=true;hourT=hourFromX(e.clientX);nowBtn.hidden=false;});
+scale.addEventListener("pointermove",e=>{if(dragging){hourT=hourFromX(e.clientX);}});
+scale.addEventListener("pointerup",()=>dragging=false); scale.addEventListener("pointercancel",()=>dragging=false);
+scale.addEventListener("keydown",e=>{const d=e.key==="ArrowRight"?.5:e.key==="ArrowLeft"?-.5:0;if(d){e.preventDefault();scrubbed=true;nowBtn.hidden=false;hourT=(hourT+d+24)%24;if(reduce)requestAnimationFrame(frame);}});
+nowBtn.addEventListener("click",()=>{scrubbed=false;hourT=localHour();nowBtn.hidden=true;});
+
+const localHour=()=>{const d=new Date();return d.getHours()+d.getMinutes()/60;};
+const fmt=h=>{h=(h+24)%24;const hh=Math.floor(h), mm=Math.floor((h-hh)*60);return String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");};
+let lastUI="";
+function ui(Lt){
+  const key=hour.toFixed(2); if(key===lastUI) return; lastUI=key;
+  const mo=Lt.moonInfo, sunUp=Lt.alt>0;
+  readout.textContent=`${fmt(hour)} · ${SHI[Math.floor(((hour+1)%24)/2)]}时 · `+(sunUp?`日高 ${Math.round(Lt.alt)}° · 方位 ${Math.round(Lt.azDeg)}°`:(mo.alt>0?`${mo.name} · 月高 ${Math.round(mo.alt)}°`:`${mo.name} · 月未升`));
+  setScale(hour); updateEave(Lt); updateBamboo(Lt);
+  document.getElementById("nBamSub").textContent = Lt.Is>.02 ? (Lt.Is<.35?"日斜 · 影偏而柔":"日正 · 影近而锐") : (Lt.Im>.05?"月下 · 影淡而虚":"无直射 · 影几不见");
+  gardenC.style.filter=`brightness(${Lt.garden.toFixed(3)}) saturate(${(.7+.3*Lt.day).toFixed(2)})`;
+}
+setInterval(()=>{ if(!scrubbed) hourT=localHour(); },30000);
+
+let lastGustLeaf=0, overWin=false;
+// screen point → where a leaf must start so its shadow appears under the pointer
+function dropAt(sx,sy,n){
+  if(reduce) return;
+  const Lt=light(hour), L=LAYERS[2], [dx,dy]=shift(Lt.dom,L.dm);
+  for(let i=0;i<n;i++){
+    const Y=sy+(Math.random()-.5)*40, X=sx+(Math.random()-.5)*70, y=Y-dy, x=X-dx;
+    if(falling.length>14) falling.shift();
+    falling.push({x, y:Math.max(cH-40,y), a:Math.PI/2+(Math.random()-.5)*1.2, len:L.leaf*(.6+Math.random()*.3), wid:L.wid*.8, vy:.5+Math.random()*.45, ph:Math.random()*6.28, sp:.9+Math.random()*.8});
+  }
+} const windHint=document.getElementById("windHint");
+addEventListener("pointermove",e=>{
+  if(dragging) return;
+  const now=performance.now();
+  if(ptr.lx!==null){const dt=Math.max(8,now-ptr.lt); const v=(e.clientX-ptr.lx)/dt; ptr.vx=Math.max(-1.2,Math.min(1.2,ptr.vx*.6+v*.55));}
+  ptr.x=e.clientX; ptr.lx=e.clientX; ptr.lt=now;
+  // a strong enough gust shakes a leaf loose, near where it blew
+  if(Math.abs(ptr.vx)>.32 && now-lastGustLeaf>380 && !reduce){ lastGustLeaf=now; dropAt(e.clientX,e.clientY,Math.abs(ptr.vx)>.9?2:1); }
+  if(windHint&&Math.abs(ptr.vx)>.3) windHint.classList.add("felt");
+},{passive:true});
+// a click (or tap) shakes leaves loose right where you touched
+addEventListener("pointerdown",e=>{
+  if(e.target.closest("a,button,.scale")) return;
+  const inWin=e.clientX>win.x&&e.clientX<win.x+win.w&&e.clientY>win.y&&e.clientY<win.y+win.h;
+  if(inWin){ winIdx=(winIdx+1)%WINDOWS.length; drawWindow(); placeNotes(); lastUI=""; return; }
+  dropAt(e.clientX,e.clientY,3); ptr.vx+=(Math.random()<.5?-1:1)*.35;
+});
+addEventListener("pointermove",e=>{ const o=e.clientX>win.x&&e.clientX<win.x+win.w&&e.clientY>win.y&&e.clientY<win.y+win.h; if(o!==overWin){overWin=o; document.body.style.cursor=o?"pointer":"";} },{passive:true});
+
+/* ---------------- loop ---------------- */
+let t0=0;
+function frame(now){
+  const t=now-t0;
+  if(!reduce){
+    intro=Math.min(1,intro+1/170);
+    let dh=hourT-hour; if(dh>12) dh-=24; if(dh<-12) dh+=24;
+    hour=(hour+dh*(dragging?.2:.05)+24)%24;
+    ptr.vx*=.965;
+    gust=(vn1(t*.00012)-.5)*.55+(vn1(t*.0004+40)-.5)*.18;
+    const cv=vn1(t*.00005+9); cloud=1-sm(.72,.86,cv)*.4;
+    if(t>nextFall){ if(nextFall) spawnFall(t); nextFall=t+6000+Math.random()*8000; }
+    for(let i=falling.length-1;i>=0;i--){const f=falling[i]; f.y+=f.vy*1.6; f.x+=Math.sin(t*.0018*f.sp+f.ph)*1.1+gust*2+ptr.vx*1.5; f.a+=Math.sin(t*.0013*f.sp+f.ph)*.03;
+      if(f.y>H-pH-10) falling.splice(i,1);}
+  } else { hour=hourT; }
+  const Lt=composite(reduce?0:t);
+  ui(Lt);
+  if(!reduce) requestAnimationFrame(frame);
+}
+function rebuild(){
+  layout();
+  shadeC.width=W*SD; shadeC.height=H*SD;
+  buildWall();
+  const pxm=H/3.4; EX=Math.max(.32,(.9*2.2*pxm+60)/W); EY=Math.min(.9,(.9*2.2*pxm+60)/H);
+  for(const L of LAYERS) genLayer(L);
+  placeNotes(); buildScale();
+  lastUI="";
+  if(reduce) requestAnimationFrame(frame);
+}
+hourT=hour=localHour();
+if(window.__HOUR!==undefined){hourT=hour=window.__HOUR;scrubbed=true;}
+if(window.__FAST) intro=1;
+rebuild();
+let rt; addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(rebuild,160);});
+requestAnimationFrame(n=>{t0=n;frame(n);});
+const reveal=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{root.classList.remove("is-loading");setTimeout(()=>root.classList.add("ready"),900);}));
+if(document.fonts&&document.fonts.load){
+  Promise.race([document.fonts.load('40px "Ma Shan Zheng"','杨柳堆烟'),new Promise(r=>setTimeout(r,1600))]).then(reveal,reveal);
+} else reveal();
+setTimeout(()=>{root.classList.remove("is-loading");root.classList.add("ready");},3000);
+})();
+</script>
+
+</body>
+</html>

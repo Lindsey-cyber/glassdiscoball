@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>青绿 · 马兰馨</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;900&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Layout: one pinned cinematic stage. Scroll = walking into a live 青绿 handscroll; each chapter is a gold word standing
+   between the ranges (near peaks cover it), UI floats on silk-glass at the edges.
+   Signature: 金字立于群山之间 — real depth occlusion of type by the mountains.
+   Single deliberate look (silk painting at dawn), so no dark variant. */
+html,body{background:#e9dcbc;margin:0}
+:root{
+  color-scheme:light;
+  --silk:#e9dcbc; --silk-hi:#f4ead0; --ink:#1f2a2b; --ink-80:rgba(31,42,43,.8); --ink-60:rgba(31,42,43,.6); --ink-40:rgba(31,42,43,.4);
+  --rim:rgba(255,250,235,.9); --seal:#b23a26; --gold-1:#f0d48c; --gold-2:#c49a44; --gold-3:#7d5a22;
+  --f-cn:"Noto Serif SC","Songti SC","SimSun",serif;
+  --f-latin:"Instrument Serif","Cormorant Garamond",Georgia,serif;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+}
+body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoothing:antialiased;overflow-x:clip}
+::selection{background:rgba(196,154,68,.35)}
+.track{height:640vh}
+.stage{position:fixed;inset:0;overflow:hidden}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#far{z-index:1} #clouds{z-index:3} #near{z-index:4}
+.grain{position:fixed;inset:0;z-index:6;pointer-events:none;opacity:.16;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95 .4' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .2 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.vig{position:fixed;inset:0;z-index:6;pointer-events:none;background:radial-gradient(120% 90% at 50% 40%,transparent 60%,rgba(90,62,28,.22) 100%)}
+
+/* ---------- words in the world ---------- */
+.word{position:fixed;left:50%;top:0;z-index:2;margin:0;white-space:nowrap;pointer-events:none;
+  font-weight:900;line-height:.9;letter-spacing:-.02em;transform-origin:50% 50%;will-change:transform,opacity,filter;opacity:0;color:var(--gold-2)}
+/* gold is clipped per character: a gradient clipped on the parent breaks while the children animate */
+.word .ch{display:inline-block;padding-block:.04em;
+  background:linear-gradient(180deg,var(--gold-1) 0%,#dcb664 28%,var(--gold-2) 55%,var(--gold-3) 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.is-loading .word .ch{transform:translateY(42%);filter:blur(14px);opacity:0}
+.word .ch{transition:transform 1.3s var(--ease-out),filter 1.3s var(--ease-out),opacity 1.3s var(--ease-out)}
+
+/* ---------- glass ---------- */
+.glass{position:relative;background:rgba(246,238,214,.28);-webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);
+  box-shadow:inset 0 1px 1px rgba(255,252,240,.55),0 6px 24px -12px rgba(60,44,20,.35)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,250,235,.95) 0%,rgba(255,250,235,.35) 22%,rgba(255,250,235,0) 45%,rgba(255,250,235,0) 60%,rgba(196,154,68,.35) 85%,rgba(196,154,68,.7) 100%);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude}
+
+/* ---------- nav ---------- */
+.nav{position:fixed;z-index:10;top:calc(20px + env(safe-area-inset-top,0px));left:0;right:0;display:flex;justify-content:center;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  transition:transform 1s var(--ease-out) .1s,opacity 1s var(--ease-out) .1s,filter 1s var(--ease-out) .1s}
+.is-loading .nav{transform:translateY(-16px);opacity:0;filter:blur(8px)}
+.pill{display:flex;align-items:center;gap:4px;border-radius:999px;padding:5px}
+.mark{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--seal);color:var(--silk-hi);
+  font-family:var(--f-cn);font-weight:500;font-size:16px;text-decoration:none;flex:none;box-shadow:inset 0 0 0 2px rgba(244,234,208,.35)}
+.links{display:flex;gap:2px;margin:0 6px}
+.links a{position:relative;font-size:13.5px;letter-spacing:.22em;padding:8px 12px 8px 14px;border-radius:999px;color:var(--ink-60);text-decoration:none;transition:color .25s,background .25s}
+.links a:hover{color:var(--ink)}
+.links [aria-current="page"]{color:var(--ink);background:rgba(255,250,235,.45)}
+.links span{position:relative;font-size:13.5px;letter-spacing:.22em;padding:8px 12px 8px 14px;border-radius:999px;color:var(--ink-40);cursor:default}
+.links sup{font-family:var(--f-latin);font-size:10px;letter-spacing:0;margin-left:2px;color:var(--ink-40);vertical-align:super}
+.cta{display:inline-flex;align-items:center;gap:10px;background:var(--ink);color:var(--silk-hi);text-decoration:none;
+  border-radius:999px;padding:6px 6px 6px 18px;font-size:13.5px;letter-spacing:.2em;transition:transform .2s}
+.cta:active{transform:scale(.97)}
+.cta i{width:26px;height:26px;border-radius:50%;background:var(--silk-hi);color:var(--ink);display:grid;place-items:center;font-style:normal;font-size:13px;transition:transform .3s var(--ease-out)}
+.cta:hover i{transform:rotate(-45deg)}
+
+/* ---------- edges ---------- */
+.edge{position:fixed;z-index:10;bottom:calc(28px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px;
+  transition:opacity 1s var(--ease-out) .9s,transform 1s var(--ease-out) .9s}
+.is-loading .edge{opacity:0;transform:translateY(14px)}
+.left{left:max(28px,env(safe-area-inset-left,0px));width:min(26rem,calc(100vw - 56px))}
+.right{right:max(28px,env(safe-area-inset-right,0px));align-items:flex-end;text-align:right}
+.eyebrow{display:flex;align-items:center;gap:10px;font-size:11.5px;letter-spacing:.32em;color:var(--ink-60)}
+.eyebrow::before{flex:none}
+.eyebrow::before{content:"";width:32px;height:1px;background:var(--ink-40)}
+.cap{display:grid;align-items:end}
+.cap > div{grid-area:1/1;display:flex;flex-direction:column;gap:6px;transition:opacity .7s var(--ease-out),transform .7s var(--ease-out),filter .7s var(--ease-out)}
+.cap > div:not(.on){opacity:0;transform:translateY(10px);filter:blur(6px);pointer-events:none}
+.word.lines .ch{display:block;text-align:center}
+.word.two{font-weight:500;line-height:1.08;letter-spacing:.06em}
+.cap p{margin:0;text-shadow:0 1px 14px rgba(244,234,208,.9)}
+.cap .lede{font-family:var(--f-latin);font-style:italic;font-size:clamp(24px,2.3vw,32px);line-height:1.1;letter-spacing:-.01em;color:var(--ink)}
+.cap .lede em{font-style:normal;color:var(--ink-60)}
+.cap .src{font-size:13px;letter-spacing:.24em;color:var(--ink-80);line-height:1.7}
+.cap .src small{display:block;font-size:11px;color:var(--ink-60);letter-spacing:.28em}
+.cap .back{align-self:flex-start;margin-top:6px}
+.meta{font-size:11.5px;letter-spacing:.28em;color:var(--ink-60);line-height:1.9;font-variant-numeric:tabular-nums}
+.meta b{font-weight:500;color:var(--ink);letter-spacing:.12em}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--seal);margin-right:8px;vertical-align:1px}
+.progress{display:flex;gap:6px;margin-top:4px}
+.progress span{width:22px;height:2px;background:var(--ink-40);opacity:.4;transition:opacity .4s,background .4s}
+.progress span.on{opacity:1;background:var(--gold-3)}
+
+.cue{position:fixed;z-index:10;left:50%;transform:translateX(-50%);bottom:calc(30px + env(safe-area-inset-bottom,0px));
+  font-size:11px;letter-spacing:.5em;color:var(--ink-60);display:flex;flex-direction:column;align-items:center;gap:10px;transition:opacity .6s}
+.cue::after{content:"";width:1px;height:34px;background:linear-gradient(var(--ink-40),transparent)}
+.cue.gone{opacity:0}
+:focus-visible{outline:1.5px solid var(--seal);outline-offset:3px}
+
+@media (max-width:760px){
+  .links{margin:0 2px}
+  .links a,.links span{padding:8px 8px 8px 10px;letter-spacing:.14em}
+  .links sup{display:none}
+  .nav .cta{font-size:0;gap:0;padding:6px}
+  .nav .cta i{font-size:13px}
+  .pill{gap:10px}
+  .right .meta .wide{display:none}
+  .cue{display:none}
+  .left{left:max(20px,env(safe-area-inset-left,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+  .right{right:auto;left:max(20px,env(safe-area-inset-left,0px));align-items:flex-start;text-align:left;bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+}
+@media (prefers-reduced-motion:reduce){ .word .ch,.nav,.edge,.cap > div{transition:none} }
+</style>
+</head>
+<body>
+
+<div class="track" aria-hidden="true"></div>
+
+<div class="stage" aria-hidden="true">
+  <canvas id="far"></canvas>
+  <canvas id="clouds"></canvas>
+  <canvas id="near"></canvas>
+</div>
+<h1 class="word" data-k=".6" aria-label="青绿"><span class="ch">青</span><span class="ch">绿</span></h1>
+<p class="word two lines" data-k=".64" aria-label="行到水穷处，坐看云起时"><span class="ch">行到水穷处</span><span class="ch">坐看云起时</span></p>
+<p class="word" data-k=".6" aria-label="千里"><span class="ch">千</span><span class="ch">里</span></p>
+<p class="word" data-k="1.1" aria-label="天长地久"><span class="ch">天</span><span class="ch">长</span><span class="ch">地</span><span class="ch">久</span></p>
+<div class="grain"></div>
+<div class="vig"></div>
+
+<nav class="nav" aria-label="章节">
+  <div class="pill glass">
+    <a class="mark" href="#top" data-go="0" aria-label="马兰馨 · 回到卷首">兰</a>
+    <div class="links">
+      <a href="qinglv.html" aria-current="page">青绿<sup>i</sup></a>
+      <a href="fenqiang.html">粉墙<sup>ii</sup></a>
+      <a href="tianqing.html">天青<sup>iii</sup></a>
+      <a href="yubi.html">玉璧<sup>iv</sup></a>
+    </div>
+    <a class="cta" href="index.html">翻回正面 <i aria-hidden="true">↗</i></a>
+  </div>
+</nav>
+
+<section class="edge left" aria-live="polite">
+  <div class="eyebrow" id="eyebrow">壹 · 青绿</div>
+  <div class="cap">
+    <div class="on"><p class="lede">Heaven and earth hold great beauty, <em>and say nothing.</em></p><p class="src">天地有大美而不言<small>庄子 · 知北游</small></p></div>
+    <div><p class="lede">Walk until the water ends, <em>then watch the clouds.</em></p><p class="src">行到水穷处，坐看云起时<small>王维 · 终南别业</small></p></div>
+    <div><p class="lede">A thousand li, <em>one pedal at a time.</em></p><p class="src">千里之行，始于足下<small>道德经 · 第六十四章</small></p></div>
+    <div><p class="lede">Heaven endures, <em>and earth lasts long.</em></p><p class="src">天长地久<small>道德经 · 第七章</small></p><a class="cta back" href="index.html">翻回正面 <i aria-hidden="true">↗</i></a></div>
+  </div>
+</section>
+
+<aside class="edge right">
+  <div class="meta"><span class="dot"></span><b id="clock">--:--</b> 纽约<span class="wide"> · <span id="term">霜降</span></span></div>
+  <div class="meta">已入山 <b id="li">0.0</b> 里</div>
+  <div class="progress" id="prog"><span class="on"></span><span></span><span></span><span></span></div>
+</aside>
+
+<div class="cue" id="cue">入山</div>
+
+<script>
+document.documentElement.classList.add("is-loading");
+(() => {
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const root = document.documentElement;
+
+/* ======================= mountain shader ======================= */
+const VS = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
+const FS = `
+precision highp float;
+uniform vec2 uRes; uniform float uCamZ,uCamX,uCamY,uCut,uNear,uIntro,uTime,uAnchor;
+const float SP=1.35; const float HOR=.47;
+float h1(float n){return fract(sin(n*127.1)*43758.5453);}
+float vn(float x){float i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(h1(i),h1(i+1.),f);}
+float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(h2(i),h2(i+vec2(1.,0.)),f.x),mix(h2(i+vec2(0.,1.)),h2(i+vec2(1.,1.)),f.x),f.y);}
+float ridge(float x,float s){
+  float n=vn(x*.62+s)*.52+vn(x*1.45+s*3.1)*.27+vn(x*3.3+s*5.7)*.13+vn(x*8.1+s*1.3)*.055+vn(x*21.+s)*.025;
+  float e=smoothstep(.18,.78,vn(x*.19+s*2.3));
+  return pow(n,2.3)*(.04+1.95*e);
+}
+vec3 ramp(float t){
+  vec3 c=mix(vec3(.07,.25,.38),vec3(.10,.38,.48),smoothstep(0.,.12,t));
+  c=mix(c,vec3(.15,.51,.42),smoothstep(.1,.3,t));
+  c=mix(c,vec3(.40,.57,.36),smoothstep(.3,.5,t));
+  c=mix(c,vec3(.68,.45,.24),smoothstep(.5,.7,t));
+  c=mix(c,vec3(.86,.72,.50),smoothstep(.7,.9,t));
+  return c;
+}
+vec3 sky(vec2 s,vec2 frag){
+  vec3 top=vec3(.78,.68,.50), hz=vec3(.96,.91,.79), low=vec3(.92,.87,.75);
+  vec3 c= s.y>HOR ? mix(hz,top,pow(smoothstep(HOR,1.15,s.y),.8)) : low;
+  float asp=uRes.x/uRes.y;
+  vec2 sp=vec2(asp*.27,.70); float d=length(s-sp);
+  c=mix(c,vec3(.97,.84,.66),exp(-d*5.)*.45);
+  c=mix(c,vec3(.79,.33,.21),smoothstep(.046,.043,d)*.85);
+  c*=.975+.035*vn2(frag*vec2(.35,2.2));
+  return c;
+}
+void main(){
+  vec2 frag=gl_FragCoord.xy; float px=1./uRes.y;
+  vec2 s=vec2((frag.x-uRes.x*.5)/uRes.y, frag.y/uRes.y);
+  vec3 col=vec3(0.); float alpha=0.;
+  if(uNear<.5){col=sky(s,frag);alpha=1.;}
+  vec3 fogC=vec3(.93,.88,.76), mistC=vec3(.94,.90,.80);
+  float k0=floor(uCamZ/SP);
+  for(int j=13;j>=0;j--){
+    float k=k0+float(j)+1.;
+    float dz=k*SP-uCamZ;
+    if(dz<.28) continue;
+    bool isNear = dz<=uCut;
+    if(uNear<.5 && isNear) continue;
+    if(uNear>.5 && !isNear) continue;
+    float seed=k*1.731;
+    float wx=s.x*dz+uCamX+k*7.13;
+    float intro=smoothstep(0.,1.,clamp(uIntro*2.-float(13-j)*.075,0.,1.));
+    float H=ridge(wx,seed);
+    // the range standing just in front of each chapter word: two peaks that rise into its lower half
+    if(k>1.5 && mod(k-2.,6.)<.5){
+      float ax=uAnchor+k*7.13, rough=.88+.24*vn(wx*6.+seed), q=clamp(uRes.x/uRes.y/1.5,.5,1.), hq=mix(.8,1.,clamp((uRes.x/uRes.y-.5)/.9,0.,1.));
+      rough*=hq;
+      float p1=1.22*exp(-pow((wx-(ax-.62*q))/(.42*q),2.))*rough;
+      float p2=.98*exp(-pow((wx-(ax+.85*q))/(.36*q),2.))*rough;
+      float p3=.62*exp(-pow((wx-(ax+.15*q))/(.5*q),2.))*rough;
+      H=max(H,max(p1,max(p2,p3)));
+    }
+    H*=(.08+.92*intro);
+    float base=HOR-uCamY/dz;
+    if(H<.035) continue;
+    float top=base+H/dz;
+    if(s.y>top) continue;
+    float wy=(s.y-base)*dz;
+    float rB=min(ridge(wx*1.7+3.,seed+9.)*.85,.9)*H;
+    float t,dEdge;
+    if(wy<rB){ t=(rB-wy)/max(rB,.06)*.92; dEdge=(rB-wy)/dz; }
+    else { t=(H-wy)/max(H,.06); dEdge=top-s.y; }
+    float sl=(ridge(wx+.02,seed)-ridge(wx-.02,seed))/.04;
+    vec3 c=ramp(clamp(t,0.,1.));
+    float lit=clamp(sl*.13,-.2,.2)*(1.-clamp(t,0.,1.));
+    float st=vn2(vec2(wx*24.+wy*sl*1.5,wy*3.));
+    float fine=vn2(vec2(wx*95.,wy*95.));
+    c*= (1.+lit)*(.9+.16*st*(1.-.5*clamp(t,0.,1.)))*(.96+.08*fine);
+    // 点苔
+    vec2 g=vec2(wx,wy)*30.; vec2 gi=floor(g);
+    if(h2(gi+seed)>.9 && t<.42){ vec2 f=fract(g)-.5; float m=smoothstep(.3,.18,length(f*vec2(1.,1.5)));
+      c=mix(c,vec3(.05,.18,.15),m*.7*(1.-t*1.8)); }
+    float fog=clamp(1.-exp(-(dz-.4)*.12),0.,.92); fog=mix(fog,1.,(1.-uIntro)*.55);
+    // 金线
+    float lw=px*(1.1+.9/dz);
+    float gold=smoothstep(lw,lw*.25,dEdge)*smoothstep(.035,.16,H);
+    c=mix(c,vec3(.83,.65,.30),gold*.95);
+    c=mix(c,fogC,fog);
+    float m=smoothstep(.7,1.15,t);
+    c=mix(c,mistC,m);
+    float a=1.;
+    a*=smoothstep(.035,.2,H);
+    if(uNear>.5){ a*=(1.-m*.35)*smoothstep(.3,.8,dz); }
+    col=c*a+col*(1.-a); alpha=a+alpha*(1.-a);
+  }
+  gl_FragColor=vec4(col,alpha);
+}`;
+// NOTE: near pass uses premultiplied output; col is accumulated un-premultiplied via mix, ok for mostly-opaque layers.
+
+function makeGL(canvas){
+  const gl=canvas.getContext("webgl",{premultipliedAlpha:true,antialias:false,alpha:true});
+  if(!gl) return null;
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw gl.getShaderInfoLog(o);return o;};
+  const pr=gl.createProgram(); gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(pr); gl.useProgram(pr);
+  const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const loc=gl.getAttribLocation(pr,"p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+  const U={}; ["uRes","uCamZ","uCamX","uCamY","uCut","uNear","uIntro","uTime","uAnchor"].forEach(n=>U[n]=gl.getUniformLocation(pr,n));
+  return {gl,U,canvas};
+}
+const farC=document.getElementById("far"), nearC=document.getElementById("near"), cloudC=document.getElementById("clouds");
+let FAR,NEAR; try{FAR=makeGL(farC);NEAR=makeGL(nearC);}catch(e){console.warn(e);}
+const cctx=cloudC.getContext("2d");
+
+/* ======================= world ======================= */
+const CAMX0=0;
+const SP=1.35, HOR=.47, CAMY=1.0;
+const ZW=[2.5,8.5,14.5,20.5].map(n=>n*SP);  // chapter depths, between layers
+const REST=ZW[0]-0;                           // text depth at rest
+const CAMZ_END=ZW[3]-REST;
+const words=[...document.querySelectorAll(".word")];
+const caps=[...document.querySelectorAll(".cap > div")];
+const prog=[...document.querySelectorAll("#prog span")];
+const navLinks=[];
+const EYE=["壹 · 青绿","贰 · 水穷","叁 · 千里","肆 · 长久"];
+
+let W,H,RS, camZ=0, camZT=0, camX=0, ptrX=0, ptrY=0, ptrXT=0, ptrYT=0, intro=(reduce||window.__FAST)?1:0, t0=performance.now(), active=-1;
+
+function size(){
+  W=innerWidth; H=innerHeight;
+  RS=window.__RS||Math.min(devicePixelRatio||1, W*H>1.6e6?1:1.25);
+  for(const o of [FAR,NEAR]) if(o){o.canvas.width=Math.round(W*RS);o.canvas.height=Math.round(H*RS);o.gl.viewport(0,0,o.canvas.width,o.canvas.height);}
+  const d=Math.min(2,devicePixelRatio||1); cloudC.width=W*d; cloudC.height=H*d; cctx.setTransform(d,0,0,d,0,0);
+  fitWords();
+  cloudCache.clear();
+}
+
+/* 祥云 sprites */
+const cloudCache=new Map();
+function rnd(k){let h=(k*374761393+668265263)|0;h=(h^(h>>>13))*1274126177|0;return ((h^(h>>>16))>>>0)/4294967296;}
+function cloudSprite(seed){
+  if(cloudCache.has(seed)) return cloudCache.get(seed);
+  const n=3+Math.floor(rnd(seed)*3), R=40;
+  const w=Math.ceil(n*R*1.6+R*5), h=Math.ceil(R*3.4), c=document.createElement("canvas"), sc=2;
+  c.width=w*sc; c.height=h*sc; const g=c.getContext("2d"); g.scale(sc,sc);
+  const cs=[]; for(let k=0;k<n;k++){const r=R*(.68+rnd(seed*7+k)*.5);cs.push([R*1.4+k*R*1.5,h*.52+(rnd(seed*11+k)-.5)*R*.8,r,rnd(seed+k*5)>.5?1:-1]);}
+  const gold="#c39a45", fill="#f3e9cf";
+  const [lx,ly,lr]=cs[n-1];
+  const tail=(col,wd)=>{g.strokeStyle=col;g.lineWidth=wd;g.lineCap="round";g.beginPath();g.moveTo(lx,ly+lr*.6);
+    g.bezierCurveTo(lx+R*1.7,ly+lr*1.3,lx+R*1.7,ly-R*.95,w-8,ly-R*.65);g.stroke();};
+  tail(gold,R*.52+2.6); tail(fill,R*.52);
+  for(const [x,y,r] of cs){g.fillStyle=gold;g.beginPath();g.arc(x,y,r+1.4,0,6.283);g.fill();}
+  const grd=g.createLinearGradient(0,0,0,h); grd.addColorStop(0,"#f8f0da"); grd.addColorStop(1,"#e8d8b0");
+  for(const [x,y,r] of cs){g.fillStyle=grd;g.beginPath();g.arc(x,y,r,0,6.283);g.fill();}
+  g.strokeStyle=gold; g.lineWidth=1.3; g.lineCap="round";
+  for(const [x,y,r,dir] of cs){g.beginPath();const T=2.3*Math.PI;
+    for(let a=0;a<=T;a+=.07){const rr=r*.84*(a/T),an=dir*a+(dir>0?1.57:-1.57);const px=x+Math.cos(an)*rr,py=y+Math.sin(an)*rr;a?g.lineTo(px,py):g.moveTo(px,py);} g.stroke();}
+  const o={c,w,h}; cloudCache.set(seed,o); return o;
+}
+function drawClouds(cut,time){
+  cctx.clearRect(0,0,W,H);
+  const k0=Math.floor(camZ/1.5);
+  for(let k=k0+9;k>=k0;k--){
+    const Z=k*1.5+.75, dz=Z-camZ; if(dz<.9 || dz<cut || dz>cut+7) continue;
+    if(rnd(k*13+5)<.2) continue;
+    const wx=(rnd(k*7+1)-.5)*Z*.35+(rnd(k*3+2)>.5?1:-1)*Z*(.3+rnd(k*11)*.25)+time*.000012*(rnd(k+9)-.5);
+    const wy=1.55+rnd(k*5)*.7;
+    const sx=W/2+((wx-camX)/dz)*H, sy=H-(HOR+(wy-CAMY)/dz)*H;
+    const sp=cloudSprite(k%23), s=(.55/dz)*H/sp.w*(1+rnd(k*29)*.6)*2.2;
+    const fade=Math.min(1,(dz-.9)/.8)*Math.min(1,Math.max(0,1-(dz-cut-4.5)/2.5))*.95*Math.min(1,intro*1.5);
+    if(fade<=0) continue;
+    cctx.globalAlpha=fade;
+    cctx.drawImage(sp.c,sx-sp.w*s/2,sy-sp.h*s/2+Math.sin(time*.0005+k)*3,sp.w*s,sp.h*s);
+  }
+  cctx.globalAlpha=1;
+  // 飞鸟
+  cctx.strokeStyle="rgba(31,42,43,.62)"; cctx.lineWidth=1.1; cctx.lineCap="round";
+  for(let i=0;i<5;i++){
+    const bx=((rnd(i*31)*W*1.5+time*.02*(.7+rnd(i)))% (W*1.5))-W*.25, by=H*(.16+rnd(i*9)*.16)+Math.sin(time*.0011+i)*5;
+    const f=Math.sin(time*.011*(.8+rnd(i))+i)*3, s=4+rnd(i*2)*3;
+    cctx.beginPath();cctx.moveTo(bx-s,by-f);cctx.quadraticCurveTo(bx-s*.4,by-1.5,bx,by);cctx.quadraticCurveTo(bx+s*.4,by-1.5,bx+s,by-f);cctx.stroke();
+  }
+}
+
+/* ======================= words & UI ======================= */
+function placeWords(time){
+  let cut=0, act=-1;
+  for(let i=0;i<words.length;i++){ const dz=ZW[i]-camZ; if(dz>.55){act=i;cut=dz;break;} }
+  words.forEach((w,i)=>{
+    const dz=ZW[i]-camZ;
+    if(i!==act || dz<=.3){ w.style.opacity=0; return; }
+    const sc=REST/dz;
+    const yWorld=i===1?1.2:i===3?1.12:1.04;
+    const sy=H-(HOR+(yWorld-CAMY)/dz)*H;
+    const sx=-(ptrX*.18)/dz*H;
+    const op=Math.min(1,(9.5-dz)/2.5)*Math.min(1,(dz-.55)/.9);
+    const bl=dz<1.6?(1.6-dz)*10:0;
+    w.style.opacity=Math.max(0,op);
+    w.style.filter=bl>.2?`blur(${bl.toFixed(1)}px)`:"none";
+    w.style.transform=`translate(calc(-50% + ${sx.toFixed(1)}px), calc(${sy.toFixed(1)}px - 50%)) scale(${sc.toFixed(4)})`;
+  });
+  const ch = act<0?3:act;
+  if(ch!==active){
+    active=ch;
+    caps.forEach((c,i)=>c.classList.toggle("on",i===ch));
+    prog.forEach((p,i)=>p.classList.toggle("on",i<=ch));
+    navLinks.forEach((a,i)=>a.setAttribute("aria-current",i===ch?"true":"false"));
+    document.getElementById("eyebrow").textContent=EYE[ch];
+  }
+  return cut;
+}
+document.querySelectorAll("[data-go]").forEach(a=>a.addEventListener("click",e=>{
+  e.preventDefault(); const i=+a.dataset.go; const max=document.documentElement.scrollHeight-innerHeight;
+  scrollTo({top:max*(i/3),behavior:reduce?"auto":"smooth"});
+}));
+
+/* live NY clock & 节气 */
+const TERMS=[[1,5,"小寒"],[1,20,"大寒"],[2,4,"立春"],[2,18,"雨水"],[3,5,"惊蛰"],[3,20,"春分"],[4,5,"清明"],[4,20,"谷雨"],[5,5,"立夏"],[5,21,"小满"],[6,5,"芒种"],[6,21,"夏至"],[7,7,"小暑"],[7,22,"大暑"],[8,7,"立秋"],[8,23,"处暑"],[9,7,"白露"],[9,23,"秋分"],[10,8,"寒露"],[10,23,"霜降"],[11,7,"立冬"],[11,22,"小雪"],[12,7,"大雪"],[12,21,"冬至"]];
+function tick(){
+  const now=new Date();
+  try{document.getElementById("clock").textContent=new Intl.DateTimeFormat("en-GB",{timeZone:"America/New_York",hour:"2-digit",minute:"2-digit"}).format(now);}catch(e){}
+  const m=now.getMonth()+1,d=now.getDate(); let term="冬至"; for(const [tm,td,n] of TERMS) if(m>tm||(m===tm&&d>=td)) term=n;
+  document.getElementById("term").textContent=term;
+}
+tick(); setInterval(tick,15000);
+
+/* ======================= input ======================= */
+const cue=document.getElementById("cue");
+function readScroll(){
+  const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+  camZT=(scrollY/max)*CAMZ_END;
+  cue.classList.toggle("gone",scrollY>40);
+}
+addEventListener("scroll",readScroll,{passive:true});
+if(matchMedia("(hover:hover)").matches && !reduce){
+  addEventListener("pointermove",e=>{ptrXT=e.clientX/W-.5;ptrYT=e.clientY/H-.5;});
+}
+
+/* ======================= frame ======================= */
+function render(o,near,cut,time){
+  if(!o) return; const {gl,U}=o;
+  gl.uniform2f(U.uRes,o.canvas.width,o.canvas.height);
+  gl.uniform1f(U.uCamZ,camZ); gl.uniform1f(U.uCamX,camX); gl.uniform1f(U.uCamY,CAMY+ptrY*.06);
+  gl.uniform1f(U.uCut,cut); gl.uniform1f(U.uNear,near); gl.uniform1f(U.uIntro,intro); gl.uniform1f(U.uTime,time*.001); gl.uniform1f(U.uAnchor,CAMX0);
+  if(near){gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);}
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+function frame(now){
+  const time=now-t0;
+  if(!reduce){ intro=Math.min(1,intro+1/150); camZ+=(camZT-camZ)*.07; ptrX+=(ptrXT-ptrX)*.06; ptrY+=(ptrYT-ptrY)*.06; camX=CAMX0+time*.000005+ptrX*.18; }
+  else { camZ=camZT; camX=CAMX0; }
+  const cut=placeWords(time);
+  render(FAR,0,cut,time); render(NEAR,1,cut,time);
+  drawClouds(cut,time);
+  document.getElementById("li").textContent=(camZ*1.2).toFixed(1);
+  requestAnimationFrame(frame);
+}
+
+size(); readScroll(); camZ=camZT;
+let rt; addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(size,120);});
+requestAnimationFrame(t=>{t0=t;frame(t);
+});
+words.forEach(w=>[...w.children].forEach((c,i)=>c.style.transitionDelay=(.3+i*.14)+"s"));
+// size each word to its own shape: a width that fits the screen, capped by height
+function fitWords(){
+  words.forEach(w=>{
+    w.style.fontSize="100px";
+    const ratio=w.offsetWidth/100, lines=w.classList.contains("lines")?2:1;
+    const tw=Math.min(W*.86,H*(+w.dataset.k||1));
+    w.style.fontSize=Math.min(tw/ratio,H*(lines>1?.17:.3))+"px";
+  });
+}
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(fitWords);
+// reveal once the title face is in, so the gold characters never rise in a fallback font and then jump
+const reveal=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.remove("is-loading")));
+if(document.fonts&&document.fonts.load){
+  Promise.race([Promise.all([document.fonts.load('900 100px "Noto Serif SC"','青绿千里天长地久'),document.fonts.load('500 100px "Noto Serif SC"','行到水穷处坐看云起时'),document.fonts.load('italic 100px "Instrument Serif"','Walk')]),new Promise(r=>setTimeout(r,1800))]).then(reveal,reveal);
+} else reveal();
+setTimeout(()=>root.classList.remove("is-loading"),2600); // fail-safe
+})();
+</script>
+
+</body>
+</html>

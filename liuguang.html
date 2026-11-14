@@ -1,3 +1,135 @@
+<!doctype html>
+<html lang="zh-CN" class="lights-off">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>流光 · 马兰馨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;500&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;1,6..96,400&display=swap">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js">
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs">
+<style>
+/* Layout: a dark room with one mirror ball on a chain. The page is the back wall: every reflected beam lands on it.
+   Same catalogue language as 玉璧 — spaced capitals, a small label at the foot — but here the light is the subject.
+   Two looks, switched by the visitor: lights off (default) and lights on. */
+html,body{margin:0;height:100%;transition:background-color .9s ease,color .9s ease}
+:root{
+  color-scheme:light;
+  --bg:#e7e5df; --fg:#24221f; --fg-70:rgba(36,34,31,.7); --fg-50:rgba(36,34,31,.5); --fg-30:rgba(36,34,31,.3);
+  --accent:#9a6a2c;
+  --f-cn:"Noto Serif SC","Songti SC","SimSun",serif;
+  --f-lux:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+html.lights-off{color-scheme:dark;--bg:#050507;--fg:#e8e6df;--fg-70:rgba(232,230,223,.7);--fg-50:rgba(232,230,223,.5);--fg-30:rgba(232,230,223,.3);--accent:#f0c987}
+html,body{background:var(--bg)}
+body{color:var(--fg);font-family:var(--f-cn);font-weight:300;-webkit-font-smoothing:antialiased;overflow:hidden;touch-action:none}
+::selection{background:rgba(240,201,135,.25)}
+
+#disco-stage{position:fixed;inset:0;z-index:0;display:block;pointer-events:none;opacity:0;transition:opacity 1.2s ease}
+#disco-stage.is-ready{opacity:1}
+/* where the ball hangs at rest; the script reads its position and size */
+#ball-slot{position:fixed;left:50%;top:max(9vh,64px);width:min(30vw,38vh);aspect-ratio:1;transform:translateX(-50%);pointer-events:none}
+
+/* ---------- header ---------- */
+.top{position:fixed;z-index:10;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding-top:calc(24px + env(safe-area-inset-top,0px));
+  padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px));
+  font-size:11.5px;letter-spacing:.3em;color:var(--fg-50);transition:opacity 1.6s var(--ease) .4s}
+.top nav{display:flex;gap:clamp(14px,2.4vw,30px)}
+.top a{color:inherit;text-decoration:none;white-space:nowrap;transition:color .3s}
+.top a:hover{color:var(--fg)}
+.top i{font-family:var(--f-lux);font-style:normal;font-size:10px;letter-spacing:.12em;margin-right:.55em;color:var(--fg-30)}
+.top [aria-current="page"]{color:var(--fg)}
+.top [aria-current="page"] i{color:var(--accent)}
+
+/* ---------- label at the foot ---------- */
+.name{position:fixed;z-index:10;left:max(28px,env(safe-area-inset-left,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));
+  margin:0;display:flex;flex-direction:column;gap:9px;pointer-events:none;transition:opacity 1.8s var(--ease) .8s}
+.name h1{margin:0;font-weight:200;font-size:clamp(26px,2.6vw,34px);letter-spacing:.8em;color:var(--fg)}
+.name .lux{font-family:var(--f-lux);font-size:11px;letter-spacing:.42em;color:var(--fg-50);text-transform:uppercase}
+.name .q{font-size:12px;letter-spacing:.3em;color:var(--fg-70)}
+.name .q span{color:var(--fg-30)}
+
+.desk{position:fixed;z-index:10;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;align-items:flex-end;gap:10px;text-align:right;font-size:11.5px;letter-spacing:.3em;color:var(--fg-50);
+  transition:opacity 1.8s var(--ease) 1.1s}
+.desk .hint em{display:block;margin-top:4px;font-family:var(--f-lux);font-style:italic;font-size:12.5px;letter-spacing:.06em;color:var(--fg-30)}
+.desk .tally b{font-weight:300;font-family:var(--f-lux);font-style:italic;font-size:22px;letter-spacing:0;color:var(--fg);margin:0 .25em;font-variant-numeric:tabular-nums}
+.controls{display:flex;gap:18px}
+.controls button{font:inherit;letter-spacing:.3em;color:var(--fg-70);background:none;border:0;padding:6px 0 6px 6px;cursor:pointer;transition:color .3s}
+.controls button:hover,.controls button:focus-visible{color:var(--accent)}
+.controls button[hidden]{display:none}
+.w-m{display:none}
+@media (hover:none){ .w-d{display:none} .w-m{display:inline} }
+
+.offline{position:fixed;z-index:11;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;max-width:22rem;text-align:center;
+  font-size:13px;letter-spacing:.2em;line-height:2;color:var(--fg-70)}
+.offline[hidden]{display:none}
+.is-loading .top,.is-loading .name,.is-loading .desk{opacity:0}
+:focus-visible{outline:1px solid var(--accent);outline-offset:4px}
+
+@media (max-width:760px){
+  .top{flex-direction:column;align-items:flex-start;gap:12px}
+  .top nav{gap:14px}
+  .top .front{position:absolute;right:max(20px,env(safe-area-inset-right,0px));top:calc(24px + env(safe-area-inset-top,0px))}
+  #ball-slot{top:calc(96px + env(safe-area-inset-top,0px));width:min(58vw,34vh)}
+  .name{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+  .name h1{letter-spacing:.6em}
+  .desk{left:max(20px,env(safe-area-inset-left,0px));right:max(20px,env(safe-area-inset-right,0px));align-items:flex-start;text-align:left}
+  .desk .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .top,.name,.desk{transition:none} }
+</style>
+</head>
+<body>
+<canvas id="disco-stage" aria-hidden="true"></canvas>
+<div id="ball-slot" role="img" aria-label="一只挂在链子上的迪斯科镜球，可以拖动、甩动"></div>
+
+<header class="top">
+  <nav aria-label="返回">
+    <a href="play.html"><i>←</i>多宝格</a>
+  </nav>
+  <a class="front" href="index.html">正面 ↗</a>
+</header>
+
+<div class="name">
+  <h1>流光</h1>
+  <div class="lux">A mirror ball · nine hundred small moons</div>
+  <div class="q">明月照高楼，流光正徘徊 <span>· 曹植 · 七哀诗</span></div>
+</div>
+
+<aside class="desk">
+  <div class="hint"><span class="w-d">拖住它，甩出去 · 撞得够狠，镜片会掉</span><span class="w-m">按住它，甩出去</span><em>Grab it. Throw it. Hit hard and the mirrors fall.</em></div>
+  <div class="tally">已落<b id="tally">0</b>片</div>
+  <div class="controls">
+    <button type="button" id="btn-lights" aria-pressed="true">开灯</button>
+    <button type="button" id="btn-cut">剪断链子</button>
+    <button type="button" id="btn-reset" hidden>复原</button>
+  </div>
+</aside>
+
+<p class="offline" id="offline" hidden>镜球需要联网加载 three.js 与 Rapier 物理引擎。<br>请连上网络后刷新。</p>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js",
+    "@dimforge/rapier3d-compat": "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs"
+  }
+}
+</script>
+<script>
+document.documentElement.classList.add("is-loading");
+setTimeout(() => document.documentElement.classList.remove("is-loading"), 400);
+// If the libraries cannot load (no network), say so instead of showing an empty room.
+setTimeout(() => {
+  const stage = document.getElementById("disco-stage");
+  if (!stage.classList.contains("is-ready")) document.getElementById("offline").hidden = false;
+}, 9000);
+</script>
+<script type="module">
 /*
   Disco ball — a mirror ball on a chain, simulated with Rapier (rigid-body
   physics, WASM) and rendered with Three.js.
@@ -38,12 +170,11 @@ import RAPIER from "@dimforge/rapier3d-compat";
 
 const root = document.documentElement;
 const stage = document.getElementById("disco-stage");
-const slot = document.getElementById("play-experience");
+const slot = document.getElementById("ball-slot");
 const btnLights = document.getElementById("btn-lights");
 const btnCut = document.getElementById("btn-cut");
 const btnReset = document.getElementById("btn-reset");
-const sepReset = document.getElementById("sep-reset");
-const sepCut = document.getElementById("sep-cut");
+const tallyEl = document.getElementById("tally");
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ---------------------------------------------------------------------------
@@ -609,9 +740,8 @@ function updateUI() {
   btnCut.hidden = state !== "hanging";
   const showReset = state === "free" || (state === "hanging" && damaged);
   btnReset.hidden = !showReset;
-  sepReset.hidden = !showReset || btnCut.hidden;
-  sepCut.hidden = btnCut.hidden && btnReset.hidden;
-  btnReset.textContent = state === "free" ? "put it back" : "fix the tiles";
+  btnReset.textContent = state === "free" ? "挂回去" : "补上镜片";
+  tallyEl.textContent = looseCount;
 }
 
 function cut() {
@@ -809,7 +939,7 @@ let darkTarget = 0, dark = 0;
 function setLights(off) {
   darkTarget = off ? 1 : 0;
   root.classList.toggle("lights-off", off);
-  btnLights.textContent = off ? "lights on" : "lights off";
+  btnLights.textContent = off ? "开灯" : "关灯";
   btnLights.setAttribute("aria-pressed", String(off));
 }
 btnLights.addEventListener("click", () => setLights(darkTarget === 0));
@@ -1095,6 +1225,9 @@ function updateLighting(dt) {
 // ---------------------------------------------------------------------------
 // Loop
 
+// The room opens with the lights off, so the reflections are the first thing you see.
+setLights(true);
+dark = 1;
 syncViewport(true);
 addEventListener("resize", () => syncViewport(false));
 
@@ -1130,3 +1263,6 @@ requestAnimationFrame(frame);
 
 // Exposed for debugging in the console.
 window.disco = { world, cut, reset: startReturn, setLights, get state() { return state; }, get loose() { return looseCount; }, get ropeLength() { return ropeLength; } };
+</script>
+</body>
+</html>

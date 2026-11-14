@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>玉璧 · 马兰馨</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;1,6..96,400&display=swap">
+<style>
+/* Layout: a product page for a single object. Black everywhere; one jade bi hangs in the middle and one light — the pointer — finds it.
+   The type is set like a jeweller's catalogue: spaced capitals, a spec sheet at the foot, nothing that competes with the stone.
+   Single deliberate look (black), so no light variant. */
+html,body{background:#040504;margin:0}
+:root{
+  color-scheme:dark;
+  --fg:#e9e6dc; --fg-70:rgba(233,230,220,.7); --fg-50:rgba(233,230,220,.5); --fg-30:rgba(233,230,220,.3); --fg-15:rgba(233,230,220,.15);
+  --jade:#b9d0b4;
+  --f-cn:"Noto Serif SC","Songti SC","SimSun",serif;
+  --f-lux:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+html,body{height:100%}
+body{color:var(--fg);font-family:var(--f-cn);font-weight:300;-webkit-font-smoothing:antialiased;overflow:hidden;touch-action:none;cursor:none}
+::selection{background:rgba(185,208,180,.25)}
+#jade{position:fixed;inset:0;width:100%;height:100%;display:block}
+.dot{position:fixed;z-index:20;left:0;top:0;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,#fffdf2 0 30%,rgba(255,250,230,.35) 55%,rgba(255,250,230,0) 72%);opacity:0;transition:opacity .4s}
+.dot.on{opacity:1}
+@media (hover:none){ body{cursor:auto} .dot{display:none} }
+
+/* ---------- header ---------- */
+.top{position:fixed;z-index:10;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding-top:calc(24px + env(safe-area-inset-top,0px));
+  padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:max(28px,env(safe-area-inset-right,0px));
+  font-size:11.5px;letter-spacing:.3em;color:var(--fg-50);transition:opacity 1.6s var(--ease) .4s}
+.top nav{display:flex;gap:clamp(14px,2.4vw,30px)}
+.top a,.top span{color:inherit;text-decoration:none;white-space:nowrap}
+.top a:hover{color:var(--fg)}
+.top i{font-family:var(--f-lux);font-style:normal;font-size:10px;letter-spacing:.12em;margin-right:.55em;color:var(--fg-30)}
+.top [aria-current="page"]{color:var(--fg)}
+.top [aria-current="page"] i{color:var(--jade)}
+.cursor-on .top a,.cursor-on .tally button{cursor:none}
+
+/* ---------- the name, under the stone ---------- */
+.name{position:fixed;z-index:10;left:50%;transform:translateX(-50%);bottom:calc(max(48px,8vh) + env(safe-area-inset-bottom,0px));
+  margin:0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;transition:opacity 1.8s var(--ease) .8s;pointer-events:none}
+.name h1{margin:0;font-weight:200;font-size:clamp(22px,2.2vw,28px);letter-spacing:.9em;text-indent:.9em;color:var(--fg)}
+.name .lux{font-family:var(--f-lux);font-size:11px;letter-spacing:.5em;text-indent:.5em;color:var(--fg-50);text-transform:uppercase}
+.name .q{font-size:12px;letter-spacing:.34em;color:var(--fg-50)}
+.name .q span{color:var(--fg-30)}
+
+/* ---------- spec sheet ---------- */
+.spec{position:fixed;z-index:10;left:max(28px,env(safe-area-inset-left,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));
+  display:grid;grid-template-columns:auto auto;gap:7px 22px;margin:0;font-size:11.5px;letter-spacing:.22em;transition:opacity 1.8s var(--ease) 1s}
+.spec dt{color:var(--fg-30)}
+.spec dt i{font-family:var(--f-lux);font-style:italic;letter-spacing:.06em;font-size:11px;margin-left:.6em;text-transform:none}
+.spec dd{margin:0;color:var(--fg-70);font-variant-numeric:tabular-nums}
+.spec dd b{font-weight:300;color:var(--jade)}
+
+.light{position:fixed;z-index:10;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;font-size:11.5px;letter-spacing:.3em;color:var(--fg-50);transition:opacity 1.8s var(--ease) 1.2s}
+.light em{font-family:var(--f-lux);font-style:italic;font-size:12.5px;letter-spacing:.06em;color:var(--fg-30)}
+.light .w-m{display:none}
+@media (hover:none){ .light .w-d{display:none} .light .w-m{display:inline} }
+.is-loading .top,.is-loading .name,.is-loading .spec,.is-loading .light{opacity:0}
+:focus-visible{outline:1px solid var(--jade);outline-offset:4px}
+
+@media (max-width:760px){
+  .top{flex-direction:column;align-items:flex-start;gap:12px}
+  .top .front{position:absolute;right:max(20px,env(safe-area-inset-right,0px));top:calc(24px + env(safe-area-inset-top,0px))}
+  .name{bottom:calc(150px + env(safe-area-inset-bottom,0px));white-space:nowrap}
+  .name h1{letter-spacing:.6em;text-indent:.6em}
+  .name .lux{letter-spacing:.3em;text-indent:.3em}
+  .name .q{letter-spacing:.18em}
+  .spec{gap:6px 14px;letter-spacing:.14em;font-size:11px}
+  .spec dt i{display:none}
+  .light{bottom:auto;top:calc(80px + env(safe-area-inset-top,0px))}
+}
+@media (prefers-reduced-motion:reduce){ .top,.name,.spec,.light{transition:none} }
+</style>
+</head>
+<body>
+
+<canvas id="jade" aria-label="一枚悬在黑暗中的青白玉璧，光随指针移动"></canvas>
+<div class="dot" id="dot" aria-hidden="true"></div>
+
+<header class="top">
+  <nav aria-label="四面">
+    <a href="qinglv.html"><i>I</i>青绿</a>
+    <a href="fenqiang.html"><i>II</i>粉墙</a>
+    <a href="tianqing.html"><i>III</i>天青</a>
+    <a href="yubi.html" aria-current="page"><i>IV</i>玉璧</a>
+  </nav>
+  <a class="front" href="index.html">正面 ↗</a>
+</header>
+
+<div class="name">
+  <h1>玉璧</h1>
+  <div class="lux">Bi · a disc for heaven</div>
+  <div class="q">以苍璧礼天 <span>· 周礼 · 大宗伯</span></div>
+</div>
+
+<dl class="spec">
+  <dt>玉质<i>Stone</i></dt><dd>青白玉 · 半透 · 内有絮</dd>
+  <dt>纹饰<i>Motif</i></dt><dd>谷纹 · 内外缘各起一线</dd>
+  <dt>形制<i>Form</i></dt><dd>肉倍好 <span style="color:var(--fg-30)">· 尔雅</span></dd>
+  <dt>此刻<i>Now</i></dt><dd>光落处泛 <b id="tint">青白</b></dd>
+</dl>
+
+<div class="light">
+  <span class="w-d">移动光标，即是一束光</span><span class="w-m">手指移动，即是一束光</span>
+  <em>Your cursor is the light.</em>
+</div>
+
+<script>
+document.documentElement.classList.add("is-loading");
+(() => {
+const root=document.documentElement, reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const cv=document.getElementById("jade"), gl=cv.getContext("webgl",{antialias:false,premultipliedAlpha:false});
+const VS="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
+const FS=`
+precision highp float;
+uniform vec2 uRes; uniform float uT, uZ; uniform vec3 uL; uniform vec3 uTint; uniform vec2 uRot;
+// --- noise
+float h1(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+  return mix(mix(mix(h1(i),h1(i+vec3(1,0,0)),f.x),mix(h1(i+vec3(0,1,0)),h1(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(h1(i+vec3(0,0,1)),h1(i+vec3(1,0,1)),f.x),mix(h1(i+vec3(0,1,1)),h1(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm(vec3 p){float s=0.,a=.5;for(int i=0;i<4;i++){s+=vn(p)*a;p=p*2.02+vec3(1.7,9.2,3.1);a*=.5;}return s;}
+// --- the bi: an annulus with rounded edges; 肉倍好, so the hole is a third of the width
+const float RO=1., RI=.333, HT=.07, RB=.05;
+mat3 rotM(){ float a=uRot.x, b=uRot.y; mat3 Y=mat3(cos(a),0.,sin(a),0.,1.,0.,-sin(a),0.,cos(a)); mat3 X=mat3(1.,0.,0.,0.,cos(b),-sin(b),0.,sin(b),cos(b)); return Y*X; }
+vec2 hexd(vec2 p){ const vec2 s=vec2(1.,1.7320508); vec4 c=floor(vec4(p,p-vec2(.5,1.))/s.xyxy)+.5;
+  vec4 h=vec4(p-c.xy*s,p-(c.zw+.5)*s); return dot(h.xy,h.xy)<dot(h.zw,h.zw)?h.xy:h.zw; }
+float relief(vec3 p){
+  float rr=length(p.xy);
+  float band=smoothstep(RI+.08,RI+.12,rr)*smoothstep(RO-.08,RO-.12,rr);
+  vec2 g=hexd(p.xy*12.); float dc=length(g);
+  // 谷纹: a small raised grain in every cell, with a curl cut into one side
+  float grain=smoothstep(.34,.08,dc)*(.75+.25*sin(atan(g.y,g.x)*1.+dc*14.));
+  float ridge=exp(-pow((rr-(RO-.055))/.011,2.))+exp(-pow((rr-(RI+.055))/.011,2.));
+  return .0065*grain*band+.005*ridge;
+}
+float sdBi(vec3 p){
+  vec2 q=vec2(length(p.xy)-(RO+RI)*.5,p.z);
+  vec2 d=abs(q)-vec2((RO-RI)*.5-RB,HT-RB);
+  float s=length(max(d,0.))+min(max(d.x,d.y),0.)-RB;
+  float face=smoothstep(HT*.3,HT*.95,abs(p.z));
+  return s-relief(p)*face;
+}
+float map(vec3 p, mat3 R){ return sdBi(p*R); }
+vec3 nrm(vec3 p, mat3 R){ vec2 e=vec2(.0015,0.);
+  return normalize(vec3(map(p+e.xyy,R)-map(p-e.xyy,R),map(p+e.yxy,R)-map(p-e.yxy,R),map(p+e.yyx,R)-map(p-e.yyx,R))); }
+void main(){
+  vec2 uv=(gl_FragCoord.xy-.5*uRes)/uRes.y;
+  mat3 R=rotM();
+  vec3 ro=vec3(0.,-.17,uZ), rd=normalize(vec3(uv,-1.55));
+  // black, with the faintest breath of light where the lamp is
+  vec2 lsp=(uL.xy-ro.xy)/(ro.z-uL.z)*1.55;
+  vec3 col=vec3(.0012,.0014,.0012)+vec3(.004,.005,.004)*exp(-length(uv-lsp)*6.);
+  float t=0.; bool hit=false;
+  t=max(0.,uZ-1.6);                                        // start just short of the stone
+  for(int i=0;i<90;i++){ vec3 p=ro+rd*t; float d=map(p,R); if(d<.0007){hit=true;break;} t+=d*.8; if(t>uZ+2.) break; }
+  if(hit){
+    vec3 P=ro+rd*t, N=nrm(P,R), V=-rd;
+    vec3 Lv=uL-P; float Ld=length(Lv); vec3 L=Lv/Ld;
+    float nv=max(dot(N,V),0.);
+    // light travelling through the stone: march a little way in, gathering cloud and lamplight
+    vec3 rr=refract(rd,N,1./1.62); vec3 acc=vec3(0.); float tr=1.;
+    for(int k=0;k<14;k++){
+      vec3 X=P+rr*(.012+float(k)*.022);
+      vec3 Xl=X*R;
+      if(sdBi(Xl)>0.) break;
+      float cl=fbm(Xl*3.1+vec3(0.,uT*.045,uT*.03));
+      float wisp=smoothstep(.42,.78,cl);                       // 絮: cotton-like clouding
+      float dens=.55+1.6*wisp;
+      vec3 toL=uL-X; float lat=dot(toL.xy,toL.xy);
+      float li=2.2*exp(-lat*3.4)+.03;                       // light reaches in mostly near where it stands
+      vec3 c=mix(uTint,vec3(.9,.93,.86),wisp*.32);
+      float rim=smoothstep(.82,.98,length(Xl.xy))*smoothstep(.55,.8,fbm(Xl*5.+3.));
+      c=mix(c,vec3(.66,.48,.26),rim*.55);                      // a breath of 沁 near the rim
+      acc+=c*li*dens*.022*tr;
+      tr*=exp(-dens*.05);
+    }
+    float dif=max((dot(N,L)+.35)/1.35,0.);
+    vec3 H=normalize(L+V);
+    float spec=pow(max(dot(N,H),0.),90.)*.9+pow(max(dot(N,H),0.),14.)*.06;
+    float F=pow(1.-nv,4.);
+    float lat=dot(Lv.xy,Lv.xy), near=exp(-lat*2.2);
+    col=uTint*.012*dif + acc*1.7*mix(vec3(1.),uTint*1.25,.55) + uTint*dif*near*.14;
+    col+=vec3(1.,.99,.95)*spec*(.08+near*.9);
+    col+=uTint*F*.035*(.3+near);
+  }
+  col=1.-exp(-col*1.35);
+  col=pow(col,vec3(.4545));
+  col+=(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453)-.5)*.008;
+  gl_FragColor=vec4(col,1.);
+}`;
+let ok=!!gl, U={};
+if(gl){
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){console.warn(gl.getShaderInfoLog(o));ok=false;}return o;};
+  const pr=gl.createProgram(); gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(pr);
+  if(ok){ gl.useProgram(pr);
+    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(pr,"p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    ["uRes","uT","uZ","uL","uTint","uRot"].forEach(n=>U[n]=gl.getUniformLocation(pr,n)); }
+}
+let W,H,ZC=4.6;   // camera distance: further back on tall, narrow screens so the whole stone fits
+function size(){ W=innerWidth; H=innerHeight; ZC=4.6/Math.min(1,W/H*1.45); const d=Math.min(window.__DPR||devicePixelRatio||1, W*H>1.6e6?1:1.4);
+  cv.width=Math.round(W*d); cv.height=Math.round(H*d); if(ok) gl.viewport(0,0,cv.width,cv.height); }
+
+/* ---------------- the light follows the pointer ---------------- */
+const dot=document.getElementById("dot");
+let tx=-.45, ty=.3, lx=tx, ly=ty, lastMove=-1e9;
+addEventListener("pointermove",e=>{
+  // put the lamp just in front of the stone, exactly under the pointer
+  const ux=(e.clientX-W/2)/H, uy=-(e.clientY-H/2)/H, k=(ZC-1.05)/1.55;
+  tx=ux*k; ty=-.17+uy*k; lastMove=performance.now();
+  dot.style.transform=`translate(${e.clientX}px,${e.clientY}px)`; dot.classList.add("on"); root.classList.add("cursor-on");
+},{passive:true});
+document.addEventListener("pointerleave",()=>dot.classList.remove("on"));
+
+/* ---------------- colour by angle: 青白, 碧绿, 黄玉 ---------------- */
+const QB=[.74,.84,.74], BL=[.3,.62,.4], HY=[.86,.72,.38];
+const tintEl=document.getElementById("tint"); let lastName="";
+function tintAt(x,y){
+  const a=Math.atan2(y,x);                     // where around the stone the light stands
+  const w1=Math.max(0,Math.cos(a-2.4)), w2=Math.max(0,Math.cos(a-(-.4))), w0=.9;   // upper-left 碧绿, lower-right 黄玉, else 青白
+  const s=w0+w1+w2, c=[0,1,2].map(i=>(QB[i]*w0+BL[i]*w1+HY[i]*w2)/s);
+  const name=w1>.55?"碧绿":w2>.55?"黄玉":"青白";
+  if(name!==lastName){ lastName=name; tintEl.textContent=name; }
+  return c;
+}
+
+let t0=0;
+function frame(now){
+  const t=(now-t0)/1000;
+  // with no pointer for a while, the lamp drifts slowly round the stone on its own
+  if(now-lastMove>4000 && !reduce){ tx=Math.cos(t*.16)*.6; ty=Math.sin(t*.16)*.45-.17; }
+  lx+=(tx-lx)*.07; ly+=(ty-ly)*.07;
+  const yaw=reduce?.22:.32*Math.sin(t*.11)+.05, pitch=reduce?.18:.16+.1*Math.sin(t*.083);
+  if(ok){
+    const c=tintAt(lx,ly);
+    gl.uniform2f(U.uRes,cv.width,cv.height); gl.uniform1f(U.uT,reduce?0:t); gl.uniform1f(U.uZ,ZC);
+    gl.uniform3f(U.uL,lx,ly,1.05); gl.uniform3f(U.uTint,c[0],c[1],c[2]); gl.uniform2f(U.uRot,yaw,pitch);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+  requestAnimationFrame(frame);
+}
+size(); let rt; addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(size,150);});
+requestAnimationFrame(n=>{t0=n;frame(n);});
+const reveal=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.remove("is-loading")));
+if(document.fonts&&document.fonts.ready) Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(reveal); else reveal();
+setTimeout(()=>root.classList.remove("is-loading"),2200);
+})();
+</script>
+
+</body>
+</html>

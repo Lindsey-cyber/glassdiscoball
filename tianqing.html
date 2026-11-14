@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>天青 · 马兰馨</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400&family=Cormorant+Garamond:ital,wght@1,300;1,400&display=swap">
+<style>
+/* Layout: one piece of Ru-ware glaze filling the screen, like a museum object under a single soft light.
+   Nothing on it but a faint incised mark; the index hangs down the left edge, the object label sits at the foot like a vitrine card.
+   The interaction: where the pointer lingers, the glaze crazes, crack by crack.
+   Single deliberate look (celadon), so no OS dark variant. */
+html,body{background:#a9c0bc;margin:0}
+:root{
+  color-scheme:light;
+  --ink:#1f3534; --ink-70:rgba(31,53,52,.7); --ink-55:rgba(31,53,52,.55); --ink-35:rgba(31,53,52,.35); --ink-20:rgba(31,53,52,.2);
+  --gold:#8a6324; --seal:#a2412b;
+  --f-cn:"Noto Serif SC","Songti SC","SimSun",serif;
+  --f-en:"Cormorant Garamond","EB Garamond",Georgia,serif;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+html,body{height:100%}
+body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoothing:antialiased;overflow:hidden;touch-action:none}
+::selection{background:rgba(138,99,36,.22)}
+#glaze{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;
+  background:radial-gradient(120% 90% at 40% 35%,#c9d9d4 0%,#a9c0bc 55%,#8eaaa7 100%)}
+
+/* the cup: a Ru-ware bowl that crazes along with the glaze around it */
+.vessel{position:fixed;z-index:5;right:max(6vw,40px);top:50%;transform:translateY(-55%);margin:0;width:min(30vw,44vh);display:flex;flex-direction:column;align-items:center;gap:6px}
+.vessel canvas{width:100%;aspect-ratio:1/.82;max-width:100%;display:block;cursor:grab;touch-action:none}
+.vessel canvas.grab{cursor:grabbing}
+.vessel .shadow{position:absolute;left:20%;right:20%;top:calc(min(30vw,44vh)*.55);height:8%;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(40,62,60,.32),rgba(40,62,60,0));filter:blur(4px);pointer-events:none}
+.vessel figcaption{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:12px;letter-spacing:.36em;color:var(--ink-55)}
+.vessel figcaption b{font-weight:400;color:var(--ink);letter-spacing:.42em}
+.vessel figcaption i{font-style:italic;font-family:var(--f-en);font-size:19px;letter-spacing:0;color:var(--ink);margin:0 .15em}
+.vessel figcaption em{font-family:var(--f-en);font-size:14px;letter-spacing:.04em;color:var(--ink-55)}
+.is-loading .vessel{opacity:0}
+.vessel{transition:opacity 1.6s var(--ease) .4s}
+
+
+/* ---------- index down the left edge ---------- */
+.index{position:fixed;z-index:10;left:max(26px,env(safe-area-inset-left,0px));top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:22px;font-size:12px;letter-spacing:.42em;transition:opacity 1.4s var(--ease) .3s}
+.index a,.index span{display:flex;align-items:center;gap:12px;color:var(--ink-55);text-decoration:none;white-space:nowrap}
+.index a::before,.index span::before{content:"";width:10px;height:1px;background:var(--ink-35);transition:width .4s var(--ease),background .4s}
+.index a:hover{color:var(--ink)} .index a:hover::before{width:22px;background:var(--ink)}
+.index [aria-current="page"]{color:var(--ink)} .index [aria-current="page"]::before{width:28px;background:var(--ink)}
+.index .soon{opacity:.45}
+.front{position:fixed;z-index:10;top:calc(22px + env(safe-area-inset-top,0px));right:max(26px,env(safe-area-inset-right,0px));
+  font-size:12px;letter-spacing:.42em;color:var(--ink-55);text-decoration:none;transition:opacity 1.4s var(--ease) .3s}
+.front:hover{color:var(--ink)}
+
+/* ---------- hint ---------- */
+.hint{position:fixed;z-index:10;left:50%;top:calc(24px + env(safe-area-inset-top,0px));transform:translateX(-50%);margin:0;text-align:center;
+  font-size:12px;letter-spacing:.36em;color:var(--ink-55);line-height:1.8;transition:opacity 1.6s var(--ease) 1.2s;pointer-events:none;white-space:nowrap}
+.hint em{display:block;font-family:var(--f-en);font-style:italic;font-size:15px;letter-spacing:.04em;color:var(--ink-55)}
+.hint.done{opacity:.35}
+
+/* ---------- vitrine label ---------- */
+.label{position:fixed;z-index:10;left:50%;transform:translateX(-50%);bottom:calc(30px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;transition:opacity 1.4s var(--ease) .6s;
+  padding-left:16px;padding-right:16px;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box}
+.label h1{margin:0;font-weight:400;font-size:15px;letter-spacing:.6em;text-indent:.6em;color:var(--ink)}
+.label .en{font-family:var(--f-en);font-style:italic;font-size:16px;letter-spacing:.06em;color:var(--ink-70)}
+.label .rule{width:28px;height:1px;background:var(--ink-35);margin:4px 0}
+.label p{margin:0;font-size:11.5px;letter-spacing:.3em;color:var(--ink-55);line-height:1.8;text-wrap:balance}
+.label p span{color:var(--ink-35)}
+
+/* ---------- tally and sound ---------- */
+.tally{position:fixed;z-index:10;right:max(26px,env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;align-items:flex-end;gap:8px;font-size:11.5px;letter-spacing:.3em;color:var(--ink-55);transition:opacity 1.4s var(--ease) .8s}
+.tally b{font-weight:400;color:var(--ink);font-family:var(--f-en);font-style:italic;font-size:22px;letter-spacing:0;font-variant-numeric:tabular-nums;margin:0 .25em}
+.tally button{font:inherit;letter-spacing:.3em;color:var(--ink-55);background:none;border:0;padding:6px 0 6px 8px;cursor:pointer}
+.tally button:hover,.tally button[aria-pressed="true"]{color:var(--gold)}
+.tally .reset{color:var(--ink-35)}
+.is-loading .index,.is-loading .front,.is-loading .label,.is-loading .tally,.is-loading .hint{opacity:0}
+:focus-visible{outline:1px solid var(--gold);outline-offset:4px}
+
+@media (max-width:760px){
+  .index{top:auto;bottom:auto;transform:none;top:calc(22px + env(safe-area-inset-top,0px));flex-direction:row;gap:16px;letter-spacing:.24em}
+  .index a::before,.index span::before{display:none}
+  .index [aria-current="page"]{border-bottom:1px solid var(--ink);padding-bottom:3px}
+  .front{top:calc(22px + env(safe-area-inset-top,0px))}
+  .hint{top:calc(62px + env(safe-area-inset-top,0px));white-space:normal;width:calc(100vw - 48px)}
+  .tally{bottom:auto;top:calc(130px + env(safe-area-inset-top,0px))}
+  .vessel{right:auto;left:50%;top:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(64vw,40vh)}
+  .vessel .shadow{top:calc(min(64vw,40vh)*.55)}
+}
+@media (prefers-reduced-motion:reduce){ .index,.front,.label,.tally,.hint{transition:none} }
+</style>
+</head>
+<body>
+
+<canvas id="glaze" aria-hidden="true"></canvas>
+<figure class="vessel" aria-label="汝窑天青釉盏，可拖动旋转；随页面开片而开片">
+  <div class="shadow" aria-hidden="true"></div>
+  <canvas id="cup" tabindex="0" aria-label="拖动或用方向键转动这只盏"></canvas>
+  <figcaption><b>汝窑天青釉盏</b><span>开片 <i id="cupPct">0</i>%</span><em>Drag to turn the cup</em></figcaption>
+</figure>
+
+<nav class="index" aria-label="四面">
+  <a href="qinglv.html">青绿</a>
+  <a href="fenqiang.html">粉墙</a>
+  <a href="tianqing.html" aria-current="page">天青</a>
+  <a href="yubi.html">玉璧</a>
+</nav>
+<a class="front" href="index.html">正面 ↗</a>
+
+<p class="hint" id="hint"><span class="d">停留之处，釉面自会开片</span><em>Linger, and the glaze will begin to craze.</em></p>
+
+<section class="label" aria-label="展签">
+  <h1>天青 · 开片</h1>
+  <div class="en">Sky-after-rain celadon, with crackle</div>
+  <div class="rule"></div>
+  <p>雨过天青云破处，者般颜色做将来 <span>· 传后周世宗</span></p>
+</section>
+
+<aside class="tally">
+  <div>已开片<b id="count">0</b>道</div>
+  <div><button id="sound" type="button" aria-pressed="false">听开片声</button> <button id="reset" class="reset" type="button">复归无纹</button></div>
+</aside>
+
+<script>
+document.documentElement.classList.add("is-loading");
+(() => {
+const root=document.documentElement, reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const cv=document.getElementById("glaze");
+const gl=cv.getContext("webgl",{antialias:false,premultipliedAlpha:false,preserveDrawingBuffer:false});
+
+/* ---------------- growth field: where the pointer lingers, the glaze is stressed ---------------- */
+const GW=200; let GH=120, G=new Float32Array(GW*GH), Gb=new Uint8Array(GW*GH);
+let W=innerWidth, H=innerHeight;
+function resizeField(){
+  const nh=Math.max(60,Math.round(GW*H/W));
+  if(nh!==GH){ const old=G, oh=GH; GH=nh; G=new Float32Array(GW*GH); Gb=new Uint8Array(GW*GH);
+    for(let y=0;y<GH;y++) for(let x=0;x<GW;x++){ const oy=Math.min(oh-1,Math.round(y*oh/GH)); G[y*GW+x]=old[oy*GW+x]||0; } }
+}
+function stamp(px,py,amt,radPx){ // add a soft disc of stress at screen point (px,py)
+  const cx=px/W*GW, cy=py/H*GH, r=radPx/W*GW, r2=r*r;
+  const x0=Math.max(0,Math.floor(cx-r*2)), x1=Math.min(GW-1,Math.ceil(cx+r*2)), y0=Math.max(0,Math.floor(cy-r*2)), y1=Math.min(GH-1,Math.ceil(cy+r*2));
+  for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++){ const d2=(x-cx)**2+(y-cy)**2; const k=y*GW+x; G[k]=Math.min(1.25,G[k]+amt*Math.exp(-d2/r2)); }
+}
+function spread(){ // cracks keep running a little past where they were pushed
+  for(let y=1;y<GH-1;y++) for(let x=1;x<GW-1;x++){
+    const k=y*GW+x, n=(G[k-1]+G[k+1]+G[k-GW]+G[k+GW])*.25*.985;
+    if(n>G[k]) G[k]+= (n-G[k])*.35;
+  }
+}
+
+/* ---------------- shader ---------------- */
+const VS="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
+const FS=`
+precision highp float;
+uniform vec2 uRes; uniform float uTime, uSweep; uniform vec2 uPtr; uniform sampler2D uG;
+float h1(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+vec2 h2(vec2 p){return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(h1(i),h1(i+vec2(1,0)),f.x),mix(h1(i+vec2(0,1)),h1(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=vn(p)*a;p*=2.03;a*=.5;}return s;}
+// distance to the nearest cell border (Quilez), plus the two cells that share it
+float vbord(vec2 x, out vec2 cA, out vec2 cB){
+  vec2 n=floor(x), f=fract(x), mg=vec2(0.), mr=vec2(0.); float md=8.;
+  for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){ vec2 g=vec2(float(i),float(j)); vec2 r=g+h2(n+g)-f; float d=dot(r,r); if(d<md){md=d;mr=r;mg=g;} }
+  md=8.; vec2 bg=mg;
+  for(int j=-2;j<=2;j++) for(int i=-2;i<=2;i++){ vec2 g=mg+vec2(float(i),float(j)); vec2 r=g+h2(n+g)-f;
+    if(dot(mr-r,mr-r)>1e-5){ float d=dot(.5*(mr+r),normalize(r-mr)); if(d<md){md=d;bg=g;} } }
+  cA=n+mg; cB=n+bg; return md;
+}
+float pairHash(vec2 a, vec2 b){ return fract(sin(dot(a+b,vec2(12.989,78.233))+dot(a*b,vec2(3.1,1.7)))*43758.5453); }
+
+void main(){
+  vec2 fc=gl_FragCoord.xy, uv=fc/uRes;
+  float px=1./uRes.y; vec2 p=fc*px;                       // height units
+  float asp=uRes.x/uRes.y; vec2 c=p-vec2(asp*.5,.5);
+
+  // ---- body: a thick, milky celadon with slow variations in depth
+  // Ru glaze is even and quiet: almost one colour, with only the faintest clouding in its depth
+  float th=fbm(p*1.3+3.)*.7+fbm(p*4.+11.)*.3;
+  vec3 deep=vec3(.585,.715,.72), mid=vec3(.69,.795,.795), pale=vec3(.79,.865,.86);
+  vec3 col=mix(mid*.985,mid*1.015,smoothstep(.3,.7,th));
+  col=mix(col,pale,smoothstep(.55,1.15,1.-length(c*vec2(1./asp,1.)*1.1))*.35);
+  // glaze pools a little deeper towards the edges
+  col=mix(col,deep,smoothstep(.4,1.,length(c*vec2(1.2/asp,1.1)))*.45);
+
+  // ---- 晨星稀: a few bubbles suspended in the glaze
+  vec2 q=fc/15.; vec2 qi=floor(q); float hb=h1(qi+7.);
+  if(hb>.9935){ vec2 o=h2(qi)*.6+.2; float r=.06+.14*h1(qi+3.); float d=length(fract(q)-o);
+    col+=vec3(.025,.03,.03)*smoothstep(r,r*.4,d); col-=vec3(.018)*smoothstep(r*1.2,r,d)*smoothstep(r*.75,r,d); }
+
+  // ---- crazing, revealed by the stress field
+  float G=texture2D(uG,vec2(uv.x,1.-uv.y)).r*1.25;
+  vec2 w=p+(vec2(fbm(p*3.1),fbm(p*3.1+7.7))-.5)*.09;        // cracks wander, they are never straight
+  vec2 a1,b1,a2,b2;
+  float s1=5.2, s2=15.;
+  float d1=vbord(w*s1,a1,b1)/s1/px, d2=vbord(w*s2+vec2(9.1,3.3),a2,b2)/s2/px;
+  float e1=pairHash(a1,b1), e2=pairHash(a2,b2);
+  float t1=.1+.32*e1+.16*vn(p*9.+e1*30.), t2=.3+.42*e2+.16*vn(p*21.+e2*30.);
+  float v1=smoothstep(t1,t1+.07,G), v2=smoothstep(t2,t2+.07,G);
+  // a crack in glaze is a thin plane of broken glass inside it: it catches light (a pale core) and darkens what is just beside it
+  float wd1=mix(.7,1.3,e1), wd2=mix(.45,.9,e2);
+  vec3 white=vec3(.93,.97,.965), tea=vec3(.5,.47,.39), iron=vec3(.3,.29,.27);
+  float k1=fract(e1*7.3), k2=fract(e2*7.3);
+  vec3 c1=k1<.62?white:(k1<.86?tea:iron), c2=k2<.72?white:(k2<.92?tea:iron);
+  float al1=k1<.62?.52:.5, al2=k2<.72?.42:.38;
+  col*=1.-exp(-d1/(wd1*2.6))*.09*v1;
+  col*=1.-exp(-d2/(wd2*2.4))*.06*v2;
+  col=mix(col,c1,(1.-smoothstep(wd1*.5,wd1*.5+.9,d1))*al1*v1);
+  col=mix(col,c2,(1.-smoothstep(wd2*.5,wd2*.5+.8,d2))*al2*v2);
+
+  // ---- light: a gently domed surface, a studio window reflected in it, and a slow sweep of soft light
+  vec2 grad=-2.*.32*c + (vec2(fbm(p*14.+1.),fbm(p*14.+5.))-.5)*.05;
+  vec3 n=normalize(vec3(-grad,1.));
+  vec3 V=vec3(0.,0.,1.);
+  vec3 L=normalize(vec3(-.55+uPtr.x*.25,.6+uPtr.y*.2,.75));
+  vec3 Hh=normalize(L+V);
+  float spec=pow(max(dot(n,Hh),0.),60.)*.07+pow(max(dot(n,Hh),0.),600.)*.1;
+  float diff=.93+.07*dot(n,L);
+  col*=diff;
+  // a broad, soft lift of light from the upper left, as if from a window across the room
+  col+=vec3(.95,.98,.97)*exp(-dot(c-vec2(-asp*.28,.3),c-vec2(-asp*.28,.3))*4.)*.05;
+  // the sweep: a wide, soft band of light crossing the glaze
+  float u=(c.x*.8+c.y*.6)/(asp*.55);
+  float band=exp(-pow((u-uSweep)/.22,2.));
+  col+=vec3(.92,.96,.95)*band*.065*(.6+.4*n.z);
+  col+=vec3(1.)*spec;
+  // edge falloff, as on a curved vessel
+  col*=1.-smoothstep(.5,1.2,length(c*vec2(1./asp*1.2,1.)))*.16;
+  // paper-fine grain so gradients never band
+  col+=(h1(fc+fract(uTime))-.5)*.012;
+  gl_FragColor=vec4(col,1.);
+}`;
+let prog,U={},tex,ok=!!gl;
+if(gl){
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){console.warn(gl.getShaderInfoLog(o));ok=false;}return o;};
+  prog=gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) ok=false;
+  if(ok){
+    gl.useProgram(prog);
+    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(prog,"p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    ["uRes","uTime","uSweep","uPtr","uG"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+    tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tex);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+    gl.uniform1i(U.uG,0);
+  }
+}
+function size(){
+  W=innerWidth; H=innerHeight;
+  const d=Math.min(window.__DPR||devicePixelRatio||1, W*H>1.8e6?1.25:1.75);
+  cv.width=Math.round(W*d); cv.height=Math.round(H*d);
+  if(ok) gl.viewport(0,0,cv.width,cv.height);
+  resizeField();
+}
+
+/* ---------------- pointer: lingering stresses the glaze ---------------- */
+const ptr={x:-1,y:-1,on:false,still:0,lx:0,ly:0,sx:0,sy:0};
+addEventListener("pointermove",e=>{ if(e.target&&e.target.id==="cup"){ptr.on=false;return;} ptr.x=e.clientX;ptr.y=e.clientY;ptr.on=true;},{passive:true});
+addEventListener("pointerdown",e=>{ enableAudio(); if(e.target.closest("button,a,#cup")) return; ptr.x=e.clientX;ptr.y=e.clientY;ptr.on=true; stamp(ptr.x,ptr.y,.18,26);});
+document.addEventListener("pointerleave",()=>ptr.on=false);
+addEventListener("pointerup",e=>{ if(e.pointerType!=="mouse") ptr.on=false; });
+
+/* ---------------- the sound of 开片: tiny, glassy pings ---------------- */
+let AC=null, soundOn=false, lastPing=0;
+function enableAudio(){ if(!AC && soundOn){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } }
+function ping(){
+  if(!soundOn||!AC) return; const now=AC.currentTime; if(now-lastPing<.09) return; lastPing=now;
+  const o=AC.createOscillator(), g=AC.createGain(), f=2600+Math.random()*2400;
+  o.type="sine"; o.frequency.setValueAtTime(f,now); o.frequency.exponentialRampToValueAtTime(f*.97,now+.25);
+  g.gain.setValueAtTime(.0001,now); g.gain.exponentialRampToValueAtTime(.035+Math.random()*.03,now+.004); g.gain.exponentialRampToValueAtTime(.0001,now+.22+Math.random()*.2);
+  o.connect(g).connect(AC.destination); o.start(now); o.stop(now+.5);
+}
+const soundBtn=document.getElementById("sound");
+soundBtn.addEventListener("click",()=>{ soundOn=!soundOn; soundBtn.setAttribute("aria-pressed",soundOn); soundBtn.textContent=soundOn?"开片声 · 开":"听开片声";
+  if(soundOn){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); AC.resume&&AC.resume(); ping(); }catch(e){} } });
+document.getElementById("reset").addEventListener("click",()=>{ G.fill(0); lastCount=0; countEl.textContent="0"; hint.classList.remove("done"); document.dispatchEvent(new CustomEvent("craze",{detail:{count:0}})); });
+
+/* ---------------- tally: roughly how many cracks have opened ---------------- */
+const countEl=document.getElementById("count"), hint=document.getElementById("hint");
+let lastCount=0;
+function tally(){
+  let big=0, fine=0; for(let i=0;i<G.length;i++){ const g=G[i]*1.25; if(g>.45) big++; if(g>.8) fine++; }
+  const cellsBig=(H/5.2)**2/((W/GW)*(H/GH)), cellsFine=(H/15)**2/((W/GW)*(H/GH));
+  const n=Math.round(big/cellsBig*3.2*.6+fine/cellsFine*3.2*.3);
+  if(n>lastCount){ for(let k=0;k<Math.min(3,n-lastCount);k++) setTimeout(ping,k*60+Math.random()*80); }
+  if(n!==lastCount){ lastCount=n; countEl.textContent=n; document.dispatchEvent(new CustomEvent("craze",{detail:{count:n}})); }
+  if(n>6) hint.classList.add("done");
+}
+
+/* ---------------- loop ---------------- */
+let t0=0, frameN=0, sweep=-1.2;
+function frame(now){
+  const t=(now-t0)/1000, dt=1/60; frameN++;
+  if(ptr.on){
+    const v=Math.hypot(ptr.x-ptr.lx,ptr.y-ptr.ly); ptr.lx=ptr.x; ptr.ly=ptr.y;
+    ptr.still = v<2.5 ? Math.min(4,ptr.still+dt) : Math.max(0,ptr.still-dt*3);
+    // a passing pointer barely marks the glaze; one that stays makes it craze, faster the longer it stays
+    stamp(ptr.x,ptr.y,dt*(.04+.22*ptr.still), 40+ptr.still*18);
+  }
+  if(frameN%5===0) spread();
+  if(frameN%20===0) tally();
+  if(!reduce) sweep+=dt*.085; if(sweep>1.6) sweep=-1.6;
+  ptr.sx+=((ptr.on?ptr.x/W-.5:0)-ptr.sx)*.03; ptr.sy+=((ptr.on?.5-ptr.y/H:0)-ptr.sy)*.03;
+  if(ok){
+    for(let i=0;i<G.length;i++) Gb[i]=Math.min(255,G[i]*204);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,GW,GH,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,Gb);
+    gl.uniform2f(U.uRes,cv.width,cv.height); gl.uniform1f(U.uTime,t); gl.uniform1f(U.uSweep,reduce?-.2:sweep); gl.uniform2f(U.uPtr,ptr.sx,ptr.sy);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+  requestAnimationFrame(frame);
+}
+size();
+// a few places have already crazed, so the first view shows what the glaze does
+const seed=window.__SEED||[[.3,.38,.95],[.66,.62,.75],[.5,.2,.5],[.6,.12,.4],[.2,.75,.5]];
+for(const [x,y,a] of seed){ stamp(x*W,y*H,a,Math.min(W,H)*.14); }
+for(let i=0;i<40;i++) spread();
+tally(); lastCount=+countEl.textContent; setTimeout(()=>document.dispatchEvent(new CustomEvent("craze",{detail:{count:lastCount}})),300);
+let rt; addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(size,150);});
+requestAnimationFrame(n=>{t0=n;frame(n);});
+const reveal=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>root.classList.remove("is-loading")));
+if(document.fonts&&document.fonts.ready) Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]).then(reveal); else reveal();
+setTimeout(()=>root.classList.remove("is-loading"),2200);
+})();
+</script>
+<script>
+/* ---------------- 汝窑盏: a small cup, turned by hand, that crazes as the glaze around it does ---------------- */
+(() => {
+const cv=document.getElementById("cup"), cap=document.getElementById("cupPct");
+const gl=cv.getContext("webgl",{antialias:true,alpha:true,premultipliedAlpha:false});
+if(!gl){ cv.hidden=true; return; }
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* the cup's section, from the centre of the foot, out and up the outside, over the rim, and down the inside */
+const PROF=[[0,.0],[.27,.0],[.3,.012],[.305,.07],[.33,.088],[.42,.12],[.56,.19],[.71,.3],[.84,.44],[.93,.57],[.985,.68],[1,.715],
+            [.993,.732],[.975,.728],[.955,.69],[.9,.58],[.81,.46],[.68,.33],[.53,.23],[.38,.175],[.2,.152],[0,.148]];
+const SEG=128;
+function lathe(){
+  const n=PROF.length, pos=[], nrm=[], uv=[], idx=[];
+  let len=[0]; for(let i=1;i<n;i++) len.push(len[i-1]+Math.hypot(PROF[i][0]-PROF[i-1][0],PROF[i][1]-PROF[i-1][1]));
+  for(let i=0;i<n;i++){
+    const a=PROF[Math.max(0,i-1)], b=PROF[Math.min(n-1,i+1)];
+    let tx=b[0]-a[0], ty=b[1]-a[1]; const tl=Math.hypot(tx,ty)||1; tx/=tl; ty/=tl;
+    const nr=ty, nh=-tx;                       // outward normal in the section plane
+    for(let j=0;j<=SEG;j++){
+      const t=j/SEG*Math.PI*2, c=Math.cos(t), s=Math.sin(t);
+      pos.push(PROF[i][0]*c,PROF[i][1],PROF[i][0]*s); nrm.push(nr*c,nh,nr*s); uv.push(j/SEG,len[i]/len[n-1]);
+    }
+  }
+  for(let i=0;i<n-1;i++) for(let j=0;j<SEG;j++){ const a=i*(SEG+1)+j, b=a+SEG+1; idx.push(a,b,a+1,b,b+1,a+1); }
+  return {pos:new Float32Array(pos),nrm:new Float32Array(nrm),uv:new Float32Array(uv),idx:new Uint16Array(idx)};
+}
+const VS=`attribute vec3 aP,aN;uniform mat4 uM,uVP;varying vec3 vN,vW,vO;
+void main(){vec4 w=uM*vec4(aP,1.);vW=w.xyz;vO=aP;vN=mat3(uM)*aN;gl_Position=uVP*w;}`;
+const FS=`#extension GL_OES_standard_derivatives : enable
+precision highp float;varying vec3 vN,vW,vO;uniform vec3 uEye;uniform float uLevel;
+vec3 h3(vec3 p){p=vec3(dot(p,vec3(127.1,311.7,74.7)),dot(p,vec3(269.5,183.3,246.1)),dot(p,vec3(113.5,271.9,124.6)));return fract(sin(p)*43758.5453);}
+// 3D cells: a crack is where the surface passes between two of them, so the network sits evenly on any curve
+vec2 vor(vec3 x){
+  vec3 n=floor(x), f=fract(x); float d1=8., d2=8.; vec3 c1=n, c2=n;
+  for(int k=-1;k<=1;k++) for(int j=-1;j<=1;j++) for(int i=-1;i<=1;i++){
+    vec3 g=vec3(float(i),float(j),float(k)); vec3 r=g+h3(n+g)-f; float d=dot(r,r);
+    if(d<d1){d2=d1;c2=c1;d1=d;c1=n+g;} else if(d<d2){d2=d;c2=n+g;} }
+  float hp=fract(sin(dot(c1+c2,vec3(12.9898,78.233,37.719))+dot(c1*c2,vec3(3.1,1.7,2.3)))*43758.5453);
+  return vec2(sqrt(d2)-sqrt(d1),hp);
+}
+void main(){
+  vec3 N=normalize(vN); vec3 V=normalize(uEye-vW); if(dot(N,V)<0.) N=-N;
+  float nv=max(dot(N,V),0.);
+  vec3 base=vec3(.71,.805,.8);
+  // 紫口: the glaze runs thin at the rim and the brown body shows; the foot is a touch darker
+  base=mix(base,vec3(.43,.27,.19),smoothstep(.697,.724,vO.y)*.85);
+  base*=.93+.07*smoothstep(.0,.07,vO.y);
+  // crackle, two sizes; larger cracks open first
+  vec3 q=vO+.06*sin(vO.yzx*9.+vO.zxy*4.);
+  vec2 A=vor(q*7.), B=vor(q*14.+11.);
+  float aaA=fwidth(A.x)*1.1+1e-4, aaB=fwidth(B.x)*1.1+1e-4;
+  float vA=smoothstep(A.y*.72,A.y*.72+.04,uLevel), vB=smoothstep(.22+B.y*.78,.26+B.y*.78,uLevel);
+  float lineA=1.-smoothstep(aaA*.35,aaA*1.25,A.x), lineB=1.-smoothstep(aaB*.25,aaB*1.,B.x);
+  float edgeA=exp(-A.x/(aaA*2.8)), edgeB=exp(-B.x/(aaB*2.4));
+  float kA=fract(A.y*7.3), kB=fract(B.y*7.3);
+  // the fracture glints as the cup turns: each crack catches the light at its own angle
+  float glA=.55+.45*pow(abs(sin(A.y*41.+nv*7.)),2.), glB=.55+.45*pow(abs(sin(B.y*37.+nv*6.)),2.);
+  vec3 white=vec3(.95,.985,.98), tea=vec3(.5,.46,.38);
+  vec3 cA=kA<.75?white:tea, cB=kB<.82?white:tea;
+  base*=1.-edgeA*.1*vA-edgeB*.07*vB;
+  base=mix(base,cA,lineA*vA*(kA<.75?.62*glA:.5));
+  base=mix(base,cB,lineB*vB*(kB<.82?.4*glB:.32));
+  // a glossy glaze: soft key, a window reflected in it, and a Fresnel sheen
+  vec3 L1=normalize(vec3(-.6,.9,.7)), L2=normalize(vec3(.8,.3,-.4));
+  float d=max(dot(N,L1),0.)*.5+max(dot(N,L2),0.)*.14+.5;
+  vec3 col=base*d;
+  vec3 H1=normalize(L1+V);
+  col+=vec3(1.)*(pow(max(dot(N,H1),0.),140.)*.55+pow(max(dot(N,H1),0.),16.)*.05);
+  vec3 R=reflect(-V,N);
+  float win=smoothstep(.35,.55,R.y)*smoothstep(-.75,-.35,R.x)*smoothstep(.15,-.15,R.x);
+  float F=.04+.96*pow(1.-nv,5.);
+  col=mix(col,vec3(.97,.99,.99),win*(.18+.5*F));
+  col+=vec3(.85,.93,.92)*F*.18;
+  gl_FragColor=vec4(col,1.);
+}`;
+const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))console.warn(gl.getShaderInfoLog(o));return o;};
+gl.getExtension("OES_standard_derivatives");
+const pr=gl.createProgram(); gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(pr); gl.useProgram(pr);
+const M=lathe();
+const buf=(data,loc,size)=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);const l=gl.getAttribLocation(pr,loc);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0);};
+buf(M.pos,"aP",3); buf(M.nrm,"aN",3);
+const ib=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,M.idx,gl.STATIC_DRAW);
+const U={}; ["uM","uVP","uEye","uLevel"].forEach(n=>U[n]=gl.getUniformLocation(pr,n));
+gl.enable(gl.DEPTH_TEST);
+
+let level=0, target=0;
+document.addEventListener("craze",e=>{ target=1-Math.exp(-(e.detail.count||0)/85); });
+
+/* ---------------- matrices ---------------- */
+const mul=(a,b)=>{const o=new Float32Array(16);for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+j]*b[i*4+k];o[i*4+j]=s;}return o;};
+const persp=(f,asp,n,fa)=>{const t=1/Math.tan(f/2);return new Float32Array([t/asp,0,0,0,0,t,0,0,0,0,(fa+n)/(n-fa),-1,0,0,2*fa*n/(n-fa),0]);};
+function look(e,c){const z=[e[0]-c[0],e[1]-c[1],e[2]-c[2]],zl=Math.hypot(...z);z.forEach((v,i)=>z[i]=v/zl);
+  const x=[z[2],0,-z[0]],xl=Math.hypot(...x);x.forEach((v,i)=>x[i]=v/xl);const y=[z[1]*x[2]-z[2]*x[1],z[2]*x[0]-z[0]*x[2],z[0]*x[1]-z[1]*x[0]];
+  return new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-(x[0]*e[0]+x[1]*e[1]+x[2]*e[2]),-(y[0]*e[0]+y[1]*e[1]+y[2]*e[2]),-(z[0]*e[0]+z[1]*e[1]+z[2]*e[2]),1]);}
+const rotY=a=>{const c=Math.cos(a),s=Math.sin(a);return new Float32Array([c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1]);};
+
+/* ---------------- turning it by hand ---------------- */
+let yaw=.6, pitch=.42, vy=0, drag=null;
+cv.addEventListener("pointerdown",e=>{drag={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId);cv.classList.add("grab");e.stopPropagation();});
+cv.addEventListener("pointermove",e=>{ if(!drag) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag={x:e.clientX,y:e.clientY};
+  yaw+=dx*.012; vy=dx*.012; pitch=Math.max(-.15,Math.min(1.15,pitch+dy*.006)); });
+const end=()=>{drag=null;cv.classList.remove("grab");};
+cv.addEventListener("pointerup",end); cv.addEventListener("pointercancel",end);
+cv.addEventListener("keydown",e=>{ if(e.key==="ArrowLeft"){yaw-=.2;} if(e.key==="ArrowRight"){yaw+=.2;} if(e.key==="ArrowUp"){pitch=Math.min(1.15,pitch+.1);} if(e.key==="ArrowDown"){pitch=Math.max(-.15,pitch-.1);} });
+
+function size(){ const r=cv.getBoundingClientRect(), d=Math.min(2,devicePixelRatio||1); cv.width=Math.round(r.width*d); cv.height=Math.round(r.height*d); gl.viewport(0,0,cv.width,cv.height); }
+size(); addEventListener("resize",size);
+function frame(){
+  if(!drag){ yaw+=reduce?0:(.0035+vy); vy*=.94; }
+  level+=(target-level)*.04;
+  const pct=Math.round(level*100); if(cap.textContent!==String(pct)) cap.textContent=pct;
+  const dist=3.1, eye=[0,.36+Math.sin(pitch)*dist,Math.cos(pitch)*dist];
+  const VP=mul(persp(.62,cv.width/cv.height,.1,20),look(eye,[0,.3,0]));
+  gl.uniformMatrix4fv(U.uVP,false,VP); gl.uniformMatrix4fv(U.uM,false,rotY(yaw)); gl.uniform3fv(U.uEye,eye);
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.uniform1f(U.uLevel,level);
+  gl.drawElements(gl.TRIANGLES,M.idx.length,gl.UNSIGNED_SHORT,0);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
