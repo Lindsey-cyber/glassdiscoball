@@ -594,17 +594,37 @@
     position: fixed;
     top: 18px;
     right: 22px;
-  
-    color: rgba(0, 0, 0, 0.25);
-    font-size: 14px;
-    font-weight: 400;
-    text-decoration: none;
-  
     z-index: 1000;
-    transition: color 0.25s ease, transform 0.25s ease;
+    color: #111;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    padding: 4px 0;
+    border-bottom: 1.5px solid transparent;
+    transition: border-color 0.25s ease;
   }
-  
-  .play-link:hover {
-    color: rgba(0, 0, 0, 0.55);
-    transform: translateX(2px);
+
+  .play-link-arrow {
+    display: inline-block;
+    transition: transform 0.25s ease;
+  }
+
+  .play-link:hover,
+  .play-link:focus-visible {
+    color: #111;
+    border-bottom-color: #111;
+  }
+
+  .play-link:hover .play-link-arrow,
+  .play-link:focus-visible .play-link-arrow {
+    transform: translateX(4px);
+  }
+
+  @media (max-width: 680px) {
+    .play-link {
+      position: static;
+      display: table;
+      margin: 12px 14px 0 auto;
+    }
   }
