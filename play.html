@@ -1,427 +1,149 @@
-<!doctype html>
-<html lang="zh-CN">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>多宝格 · 马兰馨</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;1,6..96,400&display=swap">
-<style>
-/* Layout: a Qing-style 多宝格 in 紫檀, standing against a paper-white wall.
-   Compartments are staggered so no shelf board runs straight across; openings are 开光 of different shapes
-   (委角 cut-corner, 圆光 round, arched), the square ones carry 拐子纹 corner brackets (牙子).
-   A 回纹 frieze crowns it; two drawers with brass 面叶 and a 壸门 apron on 马蹄足 stand under it.
-   Each object is a project. A vertical title with a red seal hangs to the left, like an inscription on a scroll. */
-html,body{margin:0;min-height:100%}
-:root{
-  color-scheme:light;
-  --wall:#ebe3d1; --paper:#f4ecd8; --ink:#231a14; --ink-60:rgba(35,26,20,.6); --ink-40:rgba(35,26,20,.4);
-  --zitan:#2a1511; --zitan-hi:#4d2b20; --zitan-lo:#170a07; --recess:#140907;
-  --brass:#c7a15a; --seal:#a8321f;
-  --f-cn:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
-  --f-lux:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
-  --ease:cubic-bezier(.22,1,.36,1);
-  --wj:polygon(13px 0,calc(100% - 13px) 0,100% 13px,100% calc(100% - 13px),calc(100% - 13px) 100%,13px 100%,0 calc(100% - 13px),0 13px);
-}
-body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoothing:antialiased;
-  background:
-    radial-gradient(70% 60% at 55% 35%,rgba(255,250,236,.7),transparent 70%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9 .25' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .38 0 0 0 0 .28 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    var(--wall)}
-a{color:inherit}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude vibe-coding projects · Lindsey Ma</title>
+  <meta name="description" content="Small interactive experiments by Lindsey Ma, vibe-coded with Claude.">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Noto+Serif+SC:wght@500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: #FAF8F4;
+      color: #111;
+      font-family: 'Lato', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
 
-.room{display:flex;justify-content:center;align-items:flex-start;gap:clamp(20px,3.5vw,56px);
-  padding:calc(62px + env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px))}
+    .shell { max-width: 1120px; margin: 0 auto; padding: 28px 24px 96px; }
 
-/* ---------- the inscription ---------- */
-.inscr{flex:none;display:flex;flex-direction:row-reverse;gap:16px;padding-top:40px;opacity:0;animation:fade 1.6s var(--ease) .6s forwards}
-.inscr h1{white-space:nowrap;writing-mode:vertical-rl;margin:0;font-weight:500;font-size:44px;letter-spacing:.35em;line-height:1}
-.inscr .sub{writing-mode:vertical-rl;font-size:13px;letter-spacing:.5em;color:var(--ink-60);line-height:1.9;margin-top:6px}
-.inscr .sub i{font-style:normal;color:var(--ink-40)}
-.seal{display:grid;place-items:center;width:34px;height:34px;margin-top:18px;background:var(--seal);color:#f6e9d6;border-radius:3px;
-  font-size:13px;line-height:1.05;text-align:center;font-weight:500;box-shadow:inset 0 0 0 2px rgba(246,233,214,.35);transform:rotate(-2deg)}
-.inscr .col{display:flex;flex-direction:column;align-items:center}
-.back{position:fixed;z-index:20;top:calc(22px + env(safe-area-inset-top,0px));right:max(26px,env(safe-area-inset-right,0px));
-  font-size:12px;letter-spacing:.42em;color:var(--ink-60);text-decoration:none;transition:color .3s}
-.back:hover{color:var(--ink)}
-.byline{position:fixed;z-index:20;top:calc(22px + env(safe-area-inset-top,0px));left:max(26px,env(safe-area-inset-left,0px));
-  font-family:var(--f-lux);font-size:11.5px;letter-spacing:.14em;color:var(--ink-60)}
-@keyframes fade{to{opacity:1}}
+    .back {
+      display: inline-flex; gap: 6px; align-items: center;
+      font-size: 14px; font-weight: 700; color: #111;
+      border-bottom: 1.5px solid transparent; padding: 4px 0;
+      transition: border-color .25s ease;
+    }
+    .back span { display: inline-block; transition: transform .25s ease; }
+    .back:hover, .back:focus-visible { border-bottom-color: #111; }
+    .back:hover span, .back:focus-visible span { transform: translateX(-4px); }
 
-/* ---------- the cabinet ---------- */
-.cabinet{flex:0 1 1120px;min-width:0;display:flex;flex-direction:column;align-items:stretch;
-  filter:drop-shadow(0 30px 30px rgba(60,40,20,.28));opacity:0;transform:translateY(8px);animation:rise 1.4s var(--ease) .1s forwards}
-@keyframes rise{to{opacity:1;transform:none}}
-.wood{
-  background:
-    radial-gradient(380px 260px at var(--mx,50%) var(--my,20%),rgba(255,200,150,.10),transparent 70%),
-    repeating-linear-gradient(90deg,transparent 0 5px,rgba(0,0,0,.18) 5px 6px,transparent 6px 11px,rgba(255,190,150,.035) 11px 12px),
-    linear-gradient(180deg,var(--zitan-hi),var(--zitan) 30%,var(--zitan-lo));
-}
-/* 顶: a moulded top with a 回纹 frieze */
-.crown{position:relative;height:16px;margin:0 -12px;border-radius:2px 2px 0 0;box-shadow:inset 0 1px 0 rgba(255,210,170,.25),0 2px 0 var(--zitan-lo)}
-.frieze{height:26px;margin:0 -2px;position:relative;box-shadow:inset 0 -1px 0 rgba(0,0,0,.5)}
-.frieze::after{content:"";position:absolute;inset:5px 10px;opacity:.75;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='16' viewBox='0 0 32 16'%3E%3Cpath d='M0 14H6V2H18V10H11V6H14' fill='none' stroke='%23a07558' stroke-width='1.6'/%3E%3Cpath d='M16 14H22V2H34' fill='none' stroke='%23a07558' stroke-width='1.6'/%3E%3Cpath d='M0 15.2H32' stroke='%23a07558' stroke-width='.8'/%3E%3C/svg%3E") repeat-x left center/32px 16px}
+    header { margin: 64px 0 48px; }
+    h1 {
+      margin: 0; font-size: clamp(30px, 4.4vw, 46px); font-weight: 700;
+      letter-spacing: -0.02em; line-height: 1.1;
+    }
+    header p { margin: 14px 0 0; max-width: 34rem; font-size: 16px; line-height: 1.6; color: #6b6660; }
 
-.shelf{position:relative;height:max(520px,calc(100vh - 262px));display:grid;gap:12px;padding:14px;box-sizing:border-box;
-  grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(5,1fr);
-  grid-template-areas:
-    "ball ball qinglv   qinglv   qinglv   vase"
-    "ball ball qinglv   qinglv   qinglv   yubi"
-    "ball ball tianqing fenqiang fenqiang yubi"
-    "topo topo tianqing fenqiang fenqiang yubi"
-    "topo topo tianqing empty1   empty1   empty2";
-  box-shadow:inset 3px 0 0 rgba(255,210,170,.08),inset -3px 0 0 rgba(0,0,0,.4)}
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 32px; }
+    .card { display: block; opacity: 0; transform: translateY(18px); animation: rise .8s cubic-bezier(.2,.7,.2,1) forwards; }
+    .card.feature { grid-column: 1 / -1; }
+    .card:nth-child(2) { animation-delay: .08s; }
+    .card:nth-child(3) { animation-delay: .16s; }
+    .card:nth-child(4) { animation-delay: .24s; }
+    .card:nth-child(5) { animation-delay: .32s; }
+    .card:nth-child(n+6) { animation-delay: .4s; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
 
-/* a compartment: a bevelled rim, the opening (开光) itself, corner brackets, and a paper label */
-.cell{position:relative;display:block;text-decoration:none;opacity:0;animation:fade 1.2s var(--ease) forwards;animation-delay:calc(var(--d,0) * 90ms + 400ms)}
-.cell{--shape:var(--wj)}
-.cell.round{--shape:circle(closest-side at 50% 50%)}
-.cell.arch{--shape:inset(0 round 46% 46% 6px 6px / 20% 20% 6px 6px)}
-.rim,.open{position:absolute;clip-path:var(--shape)}
-.rim{inset:-3px;background:linear-gradient(160deg,#6a4030,#2a1511 45%,#0e0604)}
-.open{inset:0;overflow:hidden;
-  background:
-    radial-gradient(80% 55% at 50% 0%,rgba(255,214,160,.16),transparent 70%),
-    radial-gradient(130% 100% at 50% 50%,#24120d 0%,var(--recess) 70%)}
-.open::before{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 14px 22px -8px rgba(0,0,0,.9),inset 0 0 26px rgba(0,0,0,.55)}
-.open::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(70% 55% at 50% 0%,rgba(255,226,180,.24),transparent 70%);opacity:0;transition:opacity .6s var(--ease)}
-.cell:hover .open::after,.cell:focus-visible .open::after{opacity:1}
-/* 牙子: 拐子纹 brackets in the two upper corners of square openings */
-.ya{position:absolute;left:0;right:0;top:0;height:36px;pointer-events:none;z-index:2;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cpath d='M2 34V2H34V9H9V25H18V16' fill='none' stroke='%23331a13' stroke-width='3.4' stroke-linejoin='miter'/%3E%3Cpath d='M3 33V3H33' fill='none' stroke='%23704634' stroke-width='.8' opacity='.8'/%3E%3C/svg%3E") left top/36px 36px no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cg transform='translate(36 0) scale(-1 1)'%3E%3Cpath d='M2 34V2H34V9H9V25H18V16' fill='none' stroke='%23331a13' stroke-width='3.4' stroke-linejoin='miter'/%3E%3Cpath d='M3 33V3H33' fill='none' stroke='%23704634' stroke-width='.8' opacity='.8'/%3E%3C/g%3E%3C/svg%3E") right top/36px 36px no-repeat}
-.cell.round .ya,.cell.arch .ya{display:none}
+    .frame {
+      position: relative; overflow: hidden; border-radius: 14px;
+      aspect-ratio: 16 / 10; background: #e9e4dc;
+      box-shadow: 0 1px 2px rgba(20,16,10,.06), 0 8px 24px -12px rgba(20,16,10,.18);
+      transition: box-shadow .5s ease, transform .5s cubic-bezier(.2,.7,.2,1);
+    }
+    .card.feature .frame { aspect-ratio: 16 / 8; }
+    .card.feature img { object-position: center 20%; }
+    .frame img {
+      display: block; width: 100%; height: 100%; object-fit: cover;
+      transition: transform 1.2s cubic-bezier(.2,.7,.2,1), filter .6s ease;
+    }
+    .frame::after {
+      content: 'Open →'; position: absolute; right: 16px; bottom: 16px;
+      padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+      background: rgba(255,255,255,.92); color: #111;
+      opacity: 0; transform: translateY(6px); transition: opacity .35s ease, transform .35s ease;
+    }
+    .card:hover .frame, .card:focus-visible .frame {
+      transform: translateY(-4px);
+      box-shadow: 0 2px 4px rgba(20,16,10,.06), 0 24px 48px -18px rgba(20,16,10,.35);
+    }
+    .card:hover img, .card:focus-visible img { transform: scale(1.045); }
+    .card:hover .frame::after, .card:focus-visible .frame::after { opacity: 1; transform: none; }
+    .card:focus-visible { outline: none; }
+    .card:focus-visible .frame { outline: 2px solid #111; outline-offset: 4px; }
 
-.obj{position:absolute;inset:16px 12px 12px;transition:transform .9s var(--ease)}
-.obj svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
-.cell:hover .obj,.cell:focus-visible .obj{transform:translateY(-4px) scale(1.035)}
-.cell.soon .obj{filter:saturate(.7) brightness(.85)}
-.cell:focus-visible{outline:none}
-.cell:focus-visible .rim{background:linear-gradient(160deg,#d9b779,#7a5a2a)}
+    .meta { display: flex; align-items: baseline; gap: 14px; margin-top: 18px; }
+    .num { font-size: 12px; font-weight: 700; color: #a49d93; letter-spacing: .08em; min-width: 1.6em; }
+    .zh { font-family: 'Noto Serif SC', 'Songti SC', serif; font-size: 22px; font-weight: 500; letter-spacing: .12em; }
+    .en { font-size: 15px; font-weight: 700; }
+    .desc { margin: 6px 0 0 calc(1.6em + 14px); font-size: 15px; line-height: 1.55; color: #6b6660; max-width: 30rem; }
 
-/* 签: a vertical paper label with a red seal, pinned to the frame */
-.tag{position:absolute;z-index:3;top:18px;left:-4px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:9px 5px 7px;
-  writing-mode:vertical-rl;background:var(--paper);color:var(--ink);font-size:13px;letter-spacing:.32em;font-weight:500;
-  box-shadow:1px 2px 5px rgba(0,0,0,.45),inset 0 0 0 1px rgba(160,120,70,.35);transition:transform .6s var(--ease)}
-.tag::after{content:"";width:9px;height:9px;background:var(--seal);border-radius:1px;margin-top:2px}
-.tag em{font-style:normal;font-size:10px;letter-spacing:.2em;color:var(--seal);font-weight:400}
-.cell:hover .tag,.cell:focus-visible .tag{transform:translateY(4px)}
-.cell.round .tag{top:auto;bottom:10%}
-.hint{position:absolute;z-index:3;right:14px;bottom:10px;font-family:var(--f-lux);font-style:italic;font-size:12px;letter-spacing:.04em;color:rgba(244,236,216,.6);
-  opacity:0;transition:opacity .5s var(--ease)}
-.cell:hover .hint,.cell:focus-visible .hint{opacity:1}
+    .soon {
+      margin-top: 72px; padding-top: 28px; border-top: 1px solid #e4ded4;
+      display: flex; gap: 14px; align-items: baseline; color: #8a837a; font-size: 15px;
+    }
+    .soon b { color: #111; }
 
-/* the four rooms: one set, named on a brass plate */
-.plate{grid-area:3/3/5/6;align-self:end;justify-self:center;position:relative;bottom:-15px;z-index:4;pointer-events:none;
-  padding:2px 14px;font-size:10.5px;letter-spacing:.5em;color:#2a1a10;border-radius:2px;
-  background:linear-gradient(180deg,#e2c286,#a8823f);box-shadow:0 1px 3px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,240,200,.6)}
-.empty .open{background:radial-gradient(130% 100% at 50% 50%,#1d0e0a 0%,var(--recess) 70%)}
-.empty span{position:absolute;inset:0;display:grid;place-items:center;writing-mode:vertical-rl;font-size:12px;letter-spacing:.7em;color:rgba(244,236,216,.18)}
-.empty{pointer-events:none}
-
-/* 抽屉 and 牙条 */
-.base{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 14px 12px;box-shadow:inset 0 1px 0 rgba(255,210,170,.12),inset 0 2px 0 rgba(0,0,0,.4)}
-.drawer{position:relative;height:46px;border-radius:2px;
-  background:linear-gradient(180deg,rgba(255,200,160,.06),rgba(0,0,0,.25)),repeating-linear-gradient(90deg,transparent 0 9px,rgba(0,0,0,.16) 9px 10px);
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),inset 1px 1px 0 rgba(255,210,170,.15)}
-.drawer::before{content:"";position:absolute;left:50%;top:50%;width:46px;height:22px;transform:translate(-50%,-62%);border-radius:11px 11px 4px 4px;
-  background:linear-gradient(180deg,#f0d394,var(--brass) 50%,#8a6a30);box-shadow:0 1px 2px rgba(0,0,0,.6)}
-.drawer::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;transform:translate(-50%,10%);border-radius:50%;
-  border:2.5px solid var(--brass);border-top-color:#f0d394;box-sizing:border-box}
-.apron{height:30px;position:relative}
-.apron svg{position:absolute;inset:0;width:100%;height:100%;display:block}
-
-@media (max-width:900px){
-  .room{flex-direction:column;align-items:stretch;padding-top:calc(64px + env(safe-area-inset-top,0px))}
-  .inscr{flex-direction:row;align-items:center;gap:14px;padding:0 4px}
-  .inscr h1{writing-mode:horizontal-tb;font-size:30px;letter-spacing:.3em}
-  .inscr .sub{writing-mode:horizontal-tb;margin:0;font-size:12px;letter-spacing:.2em}
-  .inscr .col{flex-direction:row;gap:12px}
-  .seal{margin:0}
-  .shelf{height:auto;gap:10px;padding:10px;grid-template-columns:1fr 1fr;
-    grid-template-rows:330px 170px 210px 170px 190px 120px;
-    grid-template-areas:"ball ball" "qinglv qinglv" "tianqing yubi" "fenqiang fenqiang" "topo topo" "vase empty1"}
-  .empty2{display:none}
-  .plate{grid-area:4/1/5/3}
-  .hint{display:none}
-  .byline{display:none}
-}
-@media (prefers-reduced-motion:reduce){ .cell,.cabinet,.inscr{animation:none;opacity:1;transform:none} .obj,.tag{transition:none} }
-</style>
+    @media (max-width: 720px) {
+      .shell { padding: 20px 18px 72px; }
+      header { margin: 40px 0 32px; }
+      .grid { grid-template-columns: 1fr; gap: 40px; }
+      .card.feature .frame { aspect-ratio: 16 / 10; }
+      .frame::after { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .card { animation: none; opacity: 1; transform: none; }
+      .frame, .frame img { transition: none; }
+    }
+  </style>
 </head>
 <body>
-<span class="byline">Lindsey Ma · Claude vibe-coding projects</span>
-<a class="back" href="index.html">正面 ↗</a>
+  <main class="shell">
+    <a class="back" href="index.html"><span aria-hidden="true">←</span> Lindsey Ma</a>
 
-<div class="room">
-  <aside class="inscr">
-    <h1>多宝格</h1>
-    <div class="col">
-      <div class="sub" title="Small things that do not need to be useful">一格一物 · 都不必有用</div>
-      <div class="seal" aria-hidden="true">兰<br>馨</div>
-    </div>
-  </aside>
+    <header>
+      <h1>Claude vibe-coding projects</h1>
+      <p>Small interactive experiments in light, physics and traditional Chinese colour, built together with Claude. Each one is something to play with.</p>
+    </header>
 
-  <div class="cabinet" id="cabinet">
-    <div class="crown wood" aria-hidden="true"></div>
-    <div class="frieze wood" aria-hidden="true"></div>
-
-    <!--
-      ADDING A PROJECT
-      1. Add an <a class="cell"> (optionally "round" or "arch" for a 圆光 / arched opening) with an <svg> object and a .tag.
-      2. Give its grid-area a place in grid-template-areas (desktop, and the mobile block in the CSS).
-         The empty compartments "empty1" / "empty2" are waiting to be taken over.
-    -->
-    <main class="shelf wood" id="shelf">
-
-      <a class="cell" href="liuguang.html" style="grid-area:ball;--d:0" title="Mirror ball">
-        <span class="rim"></span>
-        <span class="open"><span class="obj"><svg id="obj-ball" viewBox="0 0 300 300" preserveAspectRatio="xMidYMin slice" aria-hidden="true"></svg></span></span>
-        <span class="ya"></span>
-        <span class="tag">流光</span>
-        <span class="hint">Mirror ball — throw it</span>
+    <section class="grid" aria-label="Projects">
+      <a class="card feature" href="liuguang.html">
+        <div class="frame"><img src="images/play/liuguang.webp" alt="A mirrored disco ball hanging in the dark, surrounded by falling confetti" width="1200" height="750"></div>
+        <div class="meta"><span class="num">01</span><span class="zh">流光</span><span class="en">Mirror Ball</span></div>
+        <p class="desc">A disco ball with real physics. Grab it, throw it, and knock the mirrors loose.</p>
       </a>
 
-      <a class="cell" href="qinglv.html" style="grid-area:qinglv;--d:1" title="A walkable handscroll">
-        <span class="rim"></span>
-        <span class="open"><span class="obj"><svg viewBox="0 0 420 150" aria-hidden="true">
-      <defs>
-        <linearGradient id="silk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#efe3c4"/><stop offset="1" stop-color="#dccaa0"/></linearGradient>
-        <linearGradient id="roller" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3a2015"/><stop offset=".5" stop-color="#8a5a3a"/><stop offset="1" stop-color="#2a160e"/></linearGradient>
-        <clipPath id="scrollclip"><rect x="40" y="28" width="340" height="94"/></clipPath>
-      </defs>
-      <rect x="40" y="28" width="340" height="94" fill="url(#silk)"/>
-      <g clip-path="url(#scrollclip)">
-        <circle cx="320" cy="56" r="8" fill="#c9553a" opacity=".85"/>
-        <path d="M40 92 C70 60 88 52 112 76 S150 40 180 70 S230 46 262 74 S320 58 350 80 L380 72 V122 H40Z" fill="#9fb8a0" opacity=".6"/>
-        <path d="M40 104 C62 70 82 62 104 90 S140 52 170 86 S214 66 240 92 S300 62 330 94 L380 90 V122 H40Z" fill="#3f8a7c" stroke="#d2a752" stroke-width="1.4"/>
-        <path d="M40 112 C70 92 96 88 124 106 S190 84 222 106 S300 92 340 108 L380 104 V122 H40Z" fill="#1d5b6a" stroke="#d2a752" stroke-width="1.4"/>
-        <path d="M40 120 C90 110 140 114 190 118 S300 110 380 116 V122 H40Z" fill="#b5803f"/>
-      </g>
-      <rect x="30" y="20" width="12" height="110" rx="5" fill="url(#roller)"/>
-      <rect x="378" y="20" width="12" height="110" rx="5" fill="url(#roller)"/>
-      <rect x="380" y="40" width="22" height="70" rx="3" fill="#cdb98c" opacity=".85"/>
-    </svg></span></span>
-        <span class="ya"></span>
-        <span class="tag">青绿</span>
-        <span class="hint">A walkable handscroll</span>
+      <a class="card" href="qinglv.html">
+        <div class="frame"><img src="images/play/qinglv.webp" alt="Large golden characters 青绿 over a misty landscape with a red sun" width="1200" height="750" loading="lazy"></div>
+        <div class="meta"><span class="num">02</span><span class="zh">青绿</span><span class="en">Blue-Green Mountains</span></div>
+        <p class="desc">Scroll into a blue-green landscape painting.</p>
       </a>
 
-      <div class="cell round" style="grid-area:vase;--d:2" aria-hidden="true">
-        <span class="rim"></span>
-        <span class="open"><span class="obj"><svg viewBox="0 0 100 100">
-          <defs><linearGradient id="vaseg" x1="0" x2="1"><stop offset="0" stop-color="#6d8fa0"/><stop offset=".4" stop-color="#e8eef0"/><stop offset="1" stop-color="#7e98a4"/></linearGradient></defs>
-          <path d="M50 30 C42 30 44 36 40 40 C30 48 32 70 40 82 L60 82 C68 70 70 48 60 40 C56 36 58 30 50 30Z" fill="url(#vaseg)"/>
-          <path d="M44 52 C48 50 52 50 56 52 M42 64 C48 62 52 62 58 64" stroke="#2f5a8a" stroke-width="1.3" fill="none" opacity=".7"/>
-          <path d="M50 30 C52 18 60 10 70 6 M56 18 C50 14 44 14 38 10" stroke="#3a2418" stroke-width="1.2" fill="none"/>
-          <g fill="#f3dfe0"><circle cx="70" cy="6" r="2.4"/><circle cx="63" cy="11" r="2"/><circle cx="38" cy="10" r="2.2"/><circle cx="45" cy="14" r="1.8"/></g>
-        </svg></span></span>
-      </div>
-
-      <a class="cell arch" href="yubi.html" style="grid-area:yubi;--d:3" title="Bi">
-        <span class="rim"></span>
-        <span class="open"><span class="obj"><svg viewBox="0 0 160 300" aria-hidden="true">
-      <defs>
-        <radialGradient id="jade" cx=".4" cy=".35" r=".8">
-          <stop offset="0" stop-color="#e3eedc"/><stop offset=".45" stop-color="#a9c6a6"/><stop offset="1" stop-color="#4c6e52"/>
-        </radialGradient>
-        <pattern id="grain" width="9" height="8" patternUnits="userSpaceOnUse">
-          <circle cx="4.5" cy="4" r="1.7" fill="#ffffff" opacity=".22"/><circle cx="0" cy="0" r="1.7" fill="#ffffff" opacity=".22"/><circle cx="9" cy="0" r="1.7" fill="#ffffff" opacity=".22"/>
-        </pattern>
-      </defs>
-      <path d="M80 70 a62 62 0 1 0 .01 0 Z M80 112 a20 20 0 1 1 -.01 0 Z" fill="url(#jade)" fill-rule="evenodd"/>
-      <path d="M80 76 a56 56 0 1 0 .01 0 Z M80 106 a26 26 0 1 1 -.01 0 Z" fill="url(#grain)" fill-rule="evenodd"/>
-      <path d="M80 70 a62 62 0 1 0 .01 0 Z M80 112 a20 20 0 1 1 -.01 0 Z" fill="none" stroke="#e8f2e0" stroke-opacity=".35" stroke-width="1" fill-rule="evenodd"/>
-      <path d="M52 190 Q80 178 108 190 L114 206 H46 Z" fill="#4a2a1b"/>
-      <rect x="40" y="206" width="80" height="7" rx="2" fill="#2f1a10"/>
-    </svg></span></span>
-        <span class="tag">玉璧</span>
-        <span class="hint">Bi</span>
+      <a class="card" href="fenqiang.html">
+        <div class="frame"><img src="images/play/fenqiang.webp" alt="A fan-shaped lattice window on a whitewashed wall with bamboo shadows" width="1200" height="750" loading="lazy"></div>
+        <div class="meta"><span class="num">03</span><span class="zh">粉墙</span><span class="en">Whitewashed Wall</span></div>
+        <p class="desc">Bamboo shadows on a garden wall. Your cursor is the wind; drag the sun through the day.</p>
       </a>
 
-      <a class="cell round" href="tianqing.html" style="grid-area:tianqing;--d:4" title="Ru cup">
-        <span class="rim"></span>
-        <span class="open"><span class="obj"><svg viewBox="0 0 200 150" aria-hidden="true">
-      <defs>
-        <linearGradient id="celadon" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#7f9e9b"/><stop offset=".35" stop-color="#c3d7d2"/><stop offset=".6" stop-color="#a9c0bc"/><stop offset="1" stop-color="#6e8c89"/>
-        </linearGradient>
-        <clipPath id="cupclip"><path id="cupbody" d="M30 52 C34 92 62 112 88 116 L88 124 L112 124 L112 116 C138 112 166 92 170 52 Z"/></clipPath>
-      </defs>
-      <use href="#cupbody" fill="url(#celadon)"/>
-      <g id="cupcrackle" clip-path="url(#cupclip)" fill="none" stroke="#eef6f3" stroke-opacity=".55" stroke-width=".8"></g>
-      <ellipse cx="100" cy="52" rx="70" ry="9" fill="#5d4433"/>
-      <ellipse cx="100" cy="53" rx="66" ry="7.5" fill="#9fb8b4"/>
-      <ellipse cx="100" cy="132" rx="56" ry="5" fill="#000" opacity=".35"/>
-    </svg></span></span>
-        <span class="tag">天青</span>
+      <a class="card" href="tianqing.html">
+        <div class="frame"><img src="images/play/tianqing.webp" alt="A pale celadon cup on a soft blue-green background with crackle lines" width="1200" height="750" loading="lazy"></div>
+        <div class="meta"><span class="num">04</span><span class="zh">天青</span><span class="en">Celadon</span></div>
+        <p class="desc">A Ru-ware cup whose glaze slowly crackles the longer you linger.</p>
       </a>
 
-      <a class="cell" href="fenqiang.html" style="grid-area:fenqiang;--d:5" title="Garden wall">
-        <span class="rim"></span>
-        <span class="open"><span class="obj"><svg viewBox="0 0 300 180" aria-hidden="true">
-      <defs>
-        <linearGradient id="garden" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8ebe0"/><stop offset=".45" stop-color="#9fb187"/><stop offset="1" stop-color="#3c4f38"/></linearGradient>
-        <clipPath id="fanclip"><path id="fan" d="M70 130 A110 110 0 0 1 230 130 L190 150 A60 60 0 0 0 110 150 Z"/></clipPath>
-        <filter id="blur3"><feGaussianBlur stdDeviation="2.5"/></filter>
-      </defs>
-      <rect x="40" y="20" width="220" height="140" fill="#e6e1d6"/>
-      <rect x="40" y="20" width="220" height="10" fill="#2f3134"/>
-      <g opacity=".35" filter="url(#blur3)" fill="#6f6c66">
-        <rect x="58" y="30" width="5" height="130"/>
-        <ellipse cx="88" cy="70" rx="30" ry="5" transform="rotate(24 88 70)"/><ellipse cx="90" cy="84" rx="26" ry="4" transform="rotate(44 90 84)"/>
-        <ellipse cx="238" cy="96" rx="28" ry="5" transform="rotate(-30 238 96)"/>
-      </g>
-      <g transform="translate(0,-28)">
-        <use href="#fan" fill="#2e2724" transform="translate(0,0)"/>
-        <g clip-path="url(#fanclip)">
-          <rect x="60" y="60" width="180" height="100" fill="url(#garden)"/>
-          <g stroke="#2e2724" stroke-width="3" fill="none" stroke-linecap="round">
-            <path d="M100 108 L122 96 L118 120 M122 96 L150 92 L156 112 M150 92 L178 98 L176 118 M178 98 L202 108 L190 124 M118 120 L140 128 M156 112 L176 118 M86 124 L118 120"/>
-          </g>
-        </g>
-        <use href="#fan" fill="none" stroke="#2e2724" stroke-width="7"/>
-      </g>
-    </svg></span></span>
-        <span class="ya"></span>
-        <span class="tag">粉墙</span>
-        <span class="hint">Garden wall</span>
+      <a class="card" href="yubi.html">
+        <div class="frame"><img src="images/play/yubi.webp" alt="A carved jade bi disc glowing against black" width="1200" height="750" loading="lazy"></div>
+        <div class="meta"><span class="num">05</span><span class="zh">玉璧</span><span class="en">Jade Disc</span></div>
+        <p class="desc">An ancient jade disc. Your cursor is the light.</p>
       </a>
+    </section>
 
-      <div class="plate" aria-hidden="true">四面 · 中国色</div>
-
-      <a class="cell soon" href="#" aria-disabled="true" onclick="return false" style="grid-area:topo;--d:6" title="Möbius — in progress">
-        <span class="rim"></span>
-        <span class="open"><span class="obj"><svg id="obj-mobius" viewBox="-150 -78 300 156" aria-hidden="true"></svg></span></span>
-        <span class="ya"></span>
-        <span class="tag">拓扑<em>制作中</em></span>
-        <span class="hint">One side, one edge</span>
-      </a>
-
-      <div class="cell empty" style="grid-area:empty1;--d:7" aria-hidden="true"><span class="rim"></span><span class="open"><span>虚位</span></span><span class="ya"></span></div>
-      <div class="cell empty empty2" style="grid-area:empty2;--d:8" aria-hidden="true"><span class="rim"></span><span class="open"><span>以待</span></span><span class="ya"></span></div>
-    </main>
-
-    <div class="base wood" aria-hidden="true"><div class="drawer"></div><div class="drawer"></div></div>
-    <div class="apron" aria-hidden="true">
-      <svg viewBox="0 0 1000 46" preserveAspectRatio="none">
-        <defs><linearGradient id="apronw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b1f17"/><stop offset="1" stop-color="#170a07"/></linearGradient></defs>
-        <!-- 壸门 apron between two 马蹄足 feet -->
-        <!-- 壸门 apron: a curved lower edge with a cusp at the centre, between two 马蹄足 feet -->
-        <path d="M0 0 H1000 V46 H978 C976 32 970 24 956 21 C900 18 700 16 580 16 C548 16 524 22 500 32 C476 22 452 16 420 16 C300 16 100 18 44 21 C30 24 24 32 22 46 H0 Z" fill="url(#apronw)"/>
-        <path d="M44 21 C100 18 300 16 420 16 C452 16 476 22 500 32 C524 22 548 16 580 16 C700 16 900 18 956 21" fill="none" stroke="#7a4c38" stroke-width="1" opacity=".7" vector-effect="non-scaling-stroke"/>
-      </svg>
-    </div>
-  </div>
-</div>
-
-<script>
-(() => {
-const NS = "http://www.w3.org/2000/svg";
-const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const mk = (parent, tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
-function rng(seed) { return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
-
-/* one warm light follows the pointer over the wood */
-const shelf = document.getElementById("shelf");
-addEventListener("pointermove", (e) => {
-  const r = shelf.getBoundingClientRect();
-  shelf.style.setProperty("--mx", (e.clientX - r.left) + "px");
-  shelf.style.setProperty("--my", (e.clientY - r.top) + "px");
-}, { passive: true });
-
-/* 流光: a mirror ball on a chain, throwing turning spots onto the back of its compartment */
-const ballSvg = document.getElementById("obj-ball");
-const spin = mk(ballSvg, "g", {});
-{
-  const R = rng(11), cx = 150, cy = 120;
-  const colors = ["#fff0d6", "#ff6ec4", "#62d6ff", "#fff0d6", "#fff0d6"];
-  for (let i = 0; i < 260; i++) {
-    const a = R() * Math.PI * 2, r = 62 + Math.pow(R(), .8) * 280, s = 2 + R() * 3.6 * (0.6 + r / 300);
-    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r * .85;
-    mk(spin, "rect", { x: (x - s / 2).toFixed(1), y: (y - s / 2).toFixed(1), width: s.toFixed(1), height: (s * (1 + R() * .6)).toFixed(1), rx: .8,
-      fill: colors[(R() * colors.length) | 0], opacity: (.25 + R() * .6).toFixed(2), transform: `rotate(${(a * 57.3).toFixed(0)} ${x.toFixed(0)} ${y.toFixed(0)})` });
-  }
-  mk(ballSvg, "line", { x1: cx, y1: -40, x2: cx, y2: cy - 52, stroke: "#8f8f95", "stroke-width": 1.4 });
-  mk(ballSvg, "rect", { x: cx - 7, y: cy - 54, width: 14, height: 6, rx: 2, fill: "#b8b8be" });
-  const defs = mk(ballSvg, "defs", {});
-  const g = mk(defs, "radialGradient", { id: "ballg", cx: ".36", cy: ".3", r: ".8" });
-  [["0", "#ffffff"], [".22", "#c4c5cc"], [".62", "#43444c"], ["1", "#141418"]].forEach(([o, c]) => mk(g, "stop", { offset: o, "stop-color": c }));
-  mk(defs, "clipPath", { id: "ballclip" }).appendChild(Object.assign(document.createElementNS(NS, "circle"), {})).setAttribute("r", "48");
-  defs.lastChild.firstChild.setAttribute("cx", cx); defs.lastChild.firstChild.setAttribute("cy", cy);
-  mk(ballSvg, "circle", { cx, cy, r: 48, fill: "url(#ballg)" });
-  const tiles = mk(ballSvg, "g", { "clip-path": "url(#ballclip)" });
-  for (let row = -6; row <= 6; row++) {
-    const y = cy + Math.sin(row / 6.5 * Math.PI / 2) * 48, w = Math.sqrt(Math.max(0, 48 * 48 - (y - cy) ** 2)), n = Math.max(3, Math.round(w / 4.2));
-    for (let k = 0; k < n; k++) {
-      const x = cx - w + (k + .5) * (2 * w / n);
-      const lit = R() < .08 ? (R() < .5 ? "#ffffff" : colors[1 + ((R() * 2) | 0)]) : null;
-      mk(tiles, "rect", { x: (x - 2.6).toFixed(1), y: (y - 2.6).toFixed(1), width: 5.2 * (1 - Math.abs(x - cx) / 60), height: 4.6, fill: lit || "none",
-        stroke: "rgba(0,0,0,.35)", "stroke-width": .6, opacity: lit ? .9 : 1 });
-    }
-  }
-}
-
-/* 天青: crackle on the cup */
-{
-  const g = document.getElementById("cupcrackle"), R = rng(5);
-  let d = "";
-  for (let i = 0; i < 26; i++) {
-    let x = 30 + R() * 140, y = 52 + R() * 70;
-    d += `M${x.toFixed(1)} ${y.toFixed(1)}`;
-    for (let k = 0; k < 4; k++) { x += (R() - .5) * 26; y += (R() - .5) * 18; d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; }
-  }
-  mk(g, "path", { d });
-}
-
-/* 拓扑: a Möbius strip, drawn as shaded quads sorted back to front */
-const mob = document.getElementById("obj-mobius");
-const quads = [];
-const N = 120;
-for (let i = 0; i < N; i++) quads.push(mk(mob, "path", { "stroke-width": .4 }));
-function mobius(t) {
-  const Rr = 80, w = 27, tilt = 1.0 + Math.sin(t * .3) * .08, ay = t * .35;
-  const ct = Math.cos(tilt), st = Math.sin(tilt), cy = Math.cos(ay), sy = Math.sin(ay);
-  const P = (u, v) => {
-    const r = Rr + v * Math.cos(u / 2);
-    const x = r * Math.cos(u), y = r * Math.sin(u), z = v * Math.sin(u / 2);
-    const x1 = x * cy - y * sy, y1 = x * sy + y * cy;          // spin about the strip's own axis
-    return [x1, y1 * ct - z * st, y1 * st + z * ct];            // tilt toward the viewer: [screen x, screen y, depth]
-  };
-  const L = [-.4, -.6, .7], ll = Math.hypot(...L);
-  const list = [];
-  for (let i = 0; i < N; i++) {
-    const u0 = i / N * Math.PI * 2, u1 = (i + 1) / N * Math.PI * 2;
-    const a = P(u0, -w), b = P(u1, -w), c = P(u1, w), d = P(u0, w);
-    const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], e2 = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
-    const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
-    const nl = Math.hypot(...n) || 1;
-    // one-sided surface: light it the same whichever way the normal points
-    const shade = Math.abs((n[0] * L[0] + n[1] * L[1] + n[2] * L[2]) / (nl * ll));
-    list.push({ pts: [a, b, c, d], depth: (a[2] + b[2] + c[2] + d[2]) / 4, shade, u: u0 });
-  }
-  list.sort((p, q) => q.depth - p.depth);   // far first (larger depth is further: screen y grows downward)
-  list.forEach((q, k) => {
-    const el = quads[k], [a, b, c, d] = q.pts;
-    el.setAttribute("d", `M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}L${c[0].toFixed(1)} ${c[1].toFixed(1)}L${d[0].toFixed(1)} ${d[1].toFixed(1)}Z`);
-    const l = .25 + q.shade * .75, hue = 168 + Math.sin(q.u) * 16;
-    el.setAttribute("fill", `hsl(${hue.toFixed(0)} 30% ${(16 + l * 56).toFixed(0)}%)`);
-    el.setAttribute("stroke", el.getAttribute("fill"));
-  });
-}
-let t0 = performance.now();
-function frame(now) {
-  const t = (now - t0) / 1000;
-  spin.setAttribute("transform", `rotate(${(t * 6) % 360} 150 120)`);
-  mobius(t);
-  if (!reduce) requestAnimationFrame(frame);
-}
-requestAnimationFrame(frame);
-})();
-</script>
+    <p class="soon"><span class="num">06</span><span><b>Topology</b> · coming soon</span></p>
+  </main>
 </body>
 </html>
