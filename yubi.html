@@ -7,7 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;1,6..96,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;1,6..96,400&family=Inter:wght@400;600&display=swap">
 <style>
 /* Layout: a product page for a single object. Black everywhere; one jade bi hangs in the middle and one light — the pointer — finds it.
    The type is set like a jeweller's catalogue: spaced capitals, a spec sheet at the foot, nothing that competes with the stone.
@@ -60,30 +60,37 @@ body{color:var(--fg);font-family:var(--f-cn);font-weight:300;-webkit-font-smooth
 .spec dd b{font-weight:300;color:var(--jade)}
 
 .light{position:fixed;z-index:10;right:max(28px,env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));
-  display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;font-size:11.5px;letter-spacing:.3em;color:var(--fg-50);transition:opacity 1.8s var(--ease) 1.2s}
-.light em{font-family:var(--f-lux);font-style:italic;font-size:12.5px;letter-spacing:.06em;color:var(--fg-30)}
-.light .w-m{display:none}
-@media (hover:none){ .light .w-d{display:none} .light .w-m{display:inline} }
+  font-family:"Inter",system-ui,sans-serif;color:var(--fg-70);padding:14px 16px;border-radius:12px;
+  background:rgba(20,24,20,.6);border:1px solid var(--fg-15);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:opacity 1.8s var(--ease) 1.2s;pointer-events:none}
+.light h2{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-50)}
+.light ul{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px;line-height:1.35}
+.light b{font-weight:600;color:var(--fg)}
+.light .c{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 4px 0 2px;vertical-align:0}
+.t-m{display:none}
+@media (hover:none){ .t-d{display:none!important} .t-m{display:inline} }
 .is-loading .top,.is-loading .name,.is-loading .spec,.is-loading .light{opacity:0}
 :focus-visible{outline:1px solid var(--jade);outline-offset:4px}
 
 @media (max-width:760px){
   .top{flex-direction:column;align-items:flex-start;gap:12px}
-  .top .front{position:absolute;right:max(20px,env(safe-area-inset-right,0px));top:calc(24px + env(safe-area-inset-top,0px))}
+  .top .front{position:static}
   .name{bottom:calc(150px + env(safe-area-inset-bottom,0px));white-space:nowrap}
   .name h1{letter-spacing:.6em;text-indent:.6em}
   .name .lux{letter-spacing:.3em;text-indent:.3em}
   .name .q{letter-spacing:.18em}
   .spec{gap:6px 14px;letter-spacing:.14em;font-size:11px}
   .spec dt i{display:none}
-  .light{bottom:auto;top:calc(80px + env(safe-area-inset-top,0px))}
+  .light{bottom:auto;top:calc(100px + env(safe-area-inset-top,0px));left:16px;right:16px;padding:12px 14px}
+  .light h2{display:none}
+  .light ul{font-size:13px}
 }
 @media (prefers-reduced-motion:reduce){ .top,.name,.spec,.light{transition:none} }
 </style>
 </head>
 <body>
 
-<canvas id="jade" aria-label="一枚悬在黑暗中的青白玉璧，光随指针移动"></canvas>
+<canvas id="jade" aria-label="A pale jade bi disc in the dark, lit by your pointer"></canvas>
 <div class="dot" id="dot" aria-hidden="true"></div>
 
 <header class="top">
@@ -93,7 +100,7 @@ body{color:var(--fg);font-family:var(--f-cn);font-weight:300;-webkit-font-smooth
     <a href="tianqing.html"><i>III</i>天青</a>
     <a href="yubi.html" aria-current="page"><i>IV</i>玉璧</a>
   </nav>
-  <a class="front" href="index.html">正面 ↗</a>
+  <a class="front" href="play.html">All projects ↗</a>
 </header>
 
 <div class="name">
@@ -109,10 +116,13 @@ body{color:var(--fg);font-family:var(--f-cn);font-weight:300;-webkit-font-smooth
   <dt>此刻<i>Now</i></dt><dd>光落处泛 <b id="tint">青白</b></dd>
 </dl>
 
-<div class="light">
-  <span class="w-d">移动光标，即是一束光</span><span class="w-m">手指移动，即是一束光</span>
-  <em>Your cursor is the light.</em>
-</div>
+<section class="light" aria-label="How to play">
+  <h2>How to play</h2>
+  <ul>
+    <li><b class="t-d">Move your cursor</b><b class="t-m">Drag your finger</b>: it is the only light in the room</li>
+    <li>The jade shifts colour with the light:<span class="c" style="background:#bdd2bd"></span>pale celadon,<span class="c" style="background:#5f9e72"></span>green,<span class="c" style="background:#d9b865"></span>honey</li>
+  </ul>
+</section>
 
 <script>
 document.documentElement.classList.add("is-loading");

@@ -7,7 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400&family=Cormorant+Garamond:ital,wght@1,300;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400&family=Cormorant+Garamond:ital,wght@1,300;1,400&family=Inter:wght@400;600&display=swap">
 <style>
 /* Layout: one piece of Ru-ware glaze filling the screen, like a museum object under a single soft light.
    Nothing on it but a faint incised mark; the index hangs down the left edge, the object label sits at the foot like a vitrine card.
@@ -55,10 +55,16 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
 .front:hover{color:var(--ink)}
 
 /* ---------- hint ---------- */
-.hint{position:fixed;z-index:10;left:50%;top:calc(24px + env(safe-area-inset-top,0px));transform:translateX(-50%);margin:0;text-align:center;
-  font-size:12px;letter-spacing:.36em;color:var(--ink-55);line-height:1.8;transition:opacity 1.6s var(--ease) 1.2s;pointer-events:none;white-space:nowrap}
-.hint em{display:block;font-family:var(--f-en);font-style:italic;font-size:15px;letter-spacing:.04em;color:var(--ink-55)}
-.hint.done{opacity:.35}
+.hint{position:fixed;z-index:10;left:50%;top:calc(22px + env(safe-area-inset-top,0px));transform:translateX(-50%);margin:0;
+  font-family:"Inter",system-ui,sans-serif;color:var(--ink-70);padding:14px 18px;border-radius:12px;
+  background:rgba(240,248,247,.6);border:1px solid var(--ink-20);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:opacity 1.6s var(--ease) 1.2s;pointer-events:none}
+.hint h2{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-55)}
+.hint ul{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px;line-height:1.35}
+.hint b{font-weight:600;color:var(--ink)}
+.hint.done{opacity:.55}
+.t-m{display:none}
+@media (hover:none){ .t-d{display:none!important} .t-m{display:inline} }
 
 /* ---------- vitrine label ---------- */
 .label{position:fixed;z-index:10;left:50%;transform:translateX(-50%);bottom:calc(30px + env(safe-area-inset-bottom,0px));
@@ -74,9 +80,12 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
 .tally{position:fixed;z-index:10;right:max(26px,env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));
   display:flex;flex-direction:column;align-items:flex-end;gap:8px;font-size:11.5px;letter-spacing:.3em;color:var(--ink-55);transition:opacity 1.4s var(--ease) .8s}
 .tally b{font-weight:400;color:var(--ink);font-family:var(--f-en);font-style:italic;font-size:22px;letter-spacing:0;font-variant-numeric:tabular-nums;margin:0 .25em}
-.tally button{font:inherit;letter-spacing:.3em;color:var(--ink-55);background:none;border:0;padding:6px 0 6px 8px;cursor:pointer}
-.tally button:hover,.tally button[aria-pressed="true"]{color:var(--gold)}
-.tally .reset{color:var(--ink-35)}
+.tally button{font:600 14px/1 "Inter",system-ui,sans-serif;letter-spacing:.01em;color:var(--ink);background:rgba(240,248,247,.6);border:1px solid var(--ink-20);border-radius:999px;padding:11px 16px;cursor:pointer;display:inline-flex;gap:7px;align-items:baseline;transition:border-color .3s,background-color .3s}
+.tally button small{font:300 11px/1 var(--f-cn);letter-spacing:.2em;opacity:.6}
+.tally .btns{display:flex;gap:8px}
+.tally button:hover{border-color:var(--gold)}
+.tally button[aria-pressed="true"]{background:var(--ink);color:#eef5f3;border-color:var(--ink)}
+.tally .count{font-family:"Inter",system-ui,sans-serif;font-size:13px;letter-spacing:0}
 .is-loading .index,.is-loading .front,.is-loading .label,.is-loading .tally,.is-loading .hint{opacity:0}
 :focus-visible{outline:1px solid var(--gold);outline-offset:4px}
 
@@ -85,8 +94,12 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
   .index a::before,.index span::before{display:none}
   .index [aria-current="page"]{border-bottom:1px solid var(--ink);padding-bottom:3px}
   .front{top:calc(22px + env(safe-area-inset-top,0px))}
-  .hint{top:calc(62px + env(safe-area-inset-top,0px));white-space:normal;width:calc(100vw - 48px)}
-  .tally{bottom:auto;top:calc(130px + env(safe-area-inset-top,0px))}
+  .hint{top:calc(58px + env(safe-area-inset-top,0px));width:calc(100vw - 32px);box-sizing:border-box;padding:12px 14px}
+  .tally button{white-space:nowrap}
+  .tally button small{display:none}
+  .hint h2{display:none}
+  .hint ul{font-size:13px}
+  .tally{bottom:auto;top:calc(176px + env(safe-area-inset-top,0px));right:16px;left:16px;align-items:flex-start}
   .vessel{right:auto;left:50%;top:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(64vw,40vh)}
   .vessel .shadow{top:calc(min(64vw,40vh)*.55)}
 }
@@ -96,9 +109,9 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
 <body>
 
 <canvas id="glaze" aria-hidden="true"></canvas>
-<figure class="vessel" aria-label="汝窑天青釉盏，可拖动旋转；随页面开片而开片">
+<figure class="vessel" aria-label="A Ru-ware celadon cup. Drag to turn it.">
   <div class="shadow" aria-hidden="true"></div>
-  <canvas id="cup" tabindex="0" aria-label="拖动或用方向键转动这只盏"></canvas>
+  <canvas id="cup" tabindex="0" aria-label="Drag or use the arrow keys to turn the cup"></canvas>
   <figcaption><b>汝窑天青釉盏</b><span>开片 <i id="cupPct">0</i>%</span><em>Drag to turn the cup</em></figcaption>
 </figure>
 
@@ -108,9 +121,16 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
   <a href="tianqing.html" aria-current="page">天青</a>
   <a href="yubi.html">玉璧</a>
 </nav>
-<a class="front" href="index.html">正面 ↗</a>
+<a class="front" href="play.html">All projects ↗</a>
 
-<p class="hint" id="hint"><span class="d">停留之处，釉面自会开片</span><em>Linger, and the glaze will begin to craze.</em></p>
+<section class="hint" id="hint" aria-label="How to play">
+  <h2>How to play</h2>
+  <ul>
+    <li><b class="t-d">Rest your cursor</b><b class="t-m">Press and hold</b> on the glaze and cracks slowly spread</li>
+    <li><b class="t-d">Click</b><b class="t-m">Tap</b> anywhere to crack it at once</li>
+    <li><b>Drag the cup</b> to turn it; it crackles as the glaze does</li>
+  </ul>
+</section>
 
 <section class="label" aria-label="展签">
   <h1>天青 · 开片</h1>
@@ -120,8 +140,8 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
 </section>
 
 <aside class="tally">
-  <div>已开片<b id="count">0</b>道</div>
-  <div><button id="sound" type="button" aria-pressed="false">听开片声</button> <button id="reset" class="reset" type="button">复归无纹</button></div>
+  <div class="count"><b id="count">0</b>cracks so far</div>
+  <div class="btns"><button id="sound" type="button" aria-pressed="false">Sound on <small>听开片声</small></button><button id="reset" class="reset" type="button">Reset the glaze <small>复归无纹</small></button></div>
 </aside>
 
 <script>
@@ -276,7 +296,7 @@ function ping(){
   o.connect(g).connect(AC.destination); o.start(now); o.stop(now+.5);
 }
 const soundBtn=document.getElementById("sound");
-soundBtn.addEventListener("click",()=>{ soundOn=!soundOn; soundBtn.setAttribute("aria-pressed",soundOn); soundBtn.textContent=soundOn?"开片声 · 开":"听开片声";
+soundBtn.addEventListener("click",()=>{ soundOn=!soundOn; soundBtn.setAttribute("aria-pressed",soundOn); soundBtn.innerHTML=soundOn?"Sound off <small>静</small>":"Sound on <small>听开片声</small>";
   if(soundOn){ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); AC.resume&&AC.resume(); ping(); }catch(e){} } });
 document.getElementById("reset").addEventListener("click",()=>{ G.fill(0); lastCount=0; countEl.textContent="0"; hint.classList.remove("done"); document.dispatchEvent(new CustomEvent("craze",{detail:{count:0}})); });
 

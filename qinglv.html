@@ -7,7 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;900&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;900&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;600&display=swap">
 <style>
 /* Layout: one pinned cinematic stage. Scroll = walking into a live 青绿 handscroll; each chapter is a gold word standing
    between the ranges (near peaks cover it), UI floats on silk-glass at the edges.
@@ -97,10 +97,19 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
 .progress span{width:22px;height:2px;background:var(--ink-40);opacity:.4;transition:opacity .4s,background .4s}
 .progress span.on{opacity:1;background:var(--gold-3)}
 
-.cue{position:fixed;z-index:10;left:50%;transform:translateX(-50%);bottom:calc(30px + env(safe-area-inset-bottom,0px));
-  font-size:11px;letter-spacing:.5em;color:var(--ink-60);display:flex;flex-direction:column;align-items:center;gap:10px;transition:opacity .6s}
-.cue::after{content:"";width:1px;height:34px;background:linear-gradient(var(--ink-40),transparent)}
-.cue.gone{opacity:0}
+.cue{position:fixed;z-index:10;left:50%;transform:translateX(-50%);bottom:calc(28px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 22px 12px;border-radius:18px;
+  font-family:"Inter",system-ui,sans-serif;text-align:center;color:var(--ink);
+  background:rgba(250,244,228,.72);border:1px solid rgba(125,90,34,.25);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 10px 30px -14px rgba(60,40,10,.35);transition:opacity .6s,transform .6s}
+.cue b{font-size:15px;font-weight:600;letter-spacing:.01em;display:block}
+.cue b i{font-style:normal;display:inline-block;margin-left:6px;animation:nudge 1.6s ease-in-out infinite}
+.cue > span{font-size:12.5px;color:var(--ink-60)}
+.cue small{font-family:var(--f-cn);font-size:11px;letter-spacing:.4em;color:var(--gold-3);margin-top:2px}
+@keyframes nudge{0%,100%{transform:translateY(-2px)}50%{transform:translateY(3px)}}
+.cue.gone{opacity:0;transform:translate(-50%,10px);pointer-events:none}
+.t-m{display:none}
+@media (hover:none){ .t-d{display:none!important} .t-m{display:inline} }
 :focus-visible{outline:1.5px solid var(--seal);outline-offset:3px}
 
 @media (max-width:760px){
@@ -111,7 +120,7 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
   .nav .cta i{font-size:13px}
   .pill{gap:10px}
   .right .meta .wide{display:none}
-  .cue{display:none}
+  .cue{bottom:auto;top:calc(92px + env(safe-area-inset-top,0px));padding:12px 18px 10px;width:max-content;max-width:calc(100vw - 40px)}
   .left{left:max(20px,env(safe-area-inset-left,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px))}
   .right{right:auto;left:max(20px,env(safe-area-inset-left,0px));align-items:flex-start;text-align:left;bottom:calc(22px + env(safe-area-inset-bottom,0px))}
 }
@@ -143,7 +152,7 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
       <a href="tianqing.html">天青<sup>iii</sup></a>
       <a href="yubi.html">玉璧<sup>iv</sup></a>
     </div>
-    <a class="cta" href="index.html">翻回正面 <i aria-hidden="true">↗</i></a>
+    <a class="cta" href="play.html">All projects <i aria-hidden="true">↗</i></a>
   </div>
 </nav>
 
@@ -153,17 +162,21 @@ body{color:var(--ink);font-family:var(--f-cn);font-weight:300;-webkit-font-smoot
     <div class="on"><p class="lede">Heaven and earth hold great beauty, <em>and say nothing.</em></p><p class="src">天地有大美而不言<small>庄子 · 知北游</small></p></div>
     <div><p class="lede">Walk until the water ends, <em>then watch the clouds.</em></p><p class="src">行到水穷处，坐看云起时<small>王维 · 终南别业</small></p></div>
     <div><p class="lede">A thousand li, <em>one pedal at a time.</em></p><p class="src">千里之行，始于足下<small>道德经 · 第六十四章</small></p></div>
-    <div><p class="lede">Heaven endures, <em>and earth lasts long.</em></p><p class="src">天长地久<small>道德经 · 第七章</small></p><a class="cta back" href="index.html">翻回正面 <i aria-hidden="true">↗</i></a></div>
+    <div><p class="lede">Heaven endures, <em>and earth lasts long.</em></p><p class="src">天长地久<small>道德经 · 第七章</small></p><a class="cta back" href="play.html">Back to all projects <i aria-hidden="true">↗</i></a></div>
   </div>
 </section>
 
 <aside class="edge right">
   <div class="meta"><span class="dot"></span><b id="clock">--:--</b> 纽约<span class="wide"> · <span id="term">霜降</span></span></div>
-  <div class="meta">已入山 <b id="li">0.0</b> 里</div>
+  <div class="meta"><b id="li">0.0</b> li travelled · 已入山</div>
   <div class="progress" id="prog"><span class="on"></span><span></span><span></span><span></span></div>
 </aside>
 
-<div class="cue" id="cue">入山</div>
+<div class="cue" id="cue" role="note">
+  <b><span class="t-d">Scroll</span><span class="t-m">Swipe up</span> to fly into the mountains <i aria-hidden="true">↓</i></b>
+  <span class="t-d">Move your mouse to look around</span><span class="t-m">Keep going to travel a thousand li</span>
+  <small>入山</small>
+</div>
 
 <script>
 document.documentElement.classList.add("is-loading");
