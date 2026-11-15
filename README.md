@@ -5,7 +5,8 @@ Pages that use WebGL libraries (`liuguang.html`) load them from a CDN, so they n
 
 | Page | What it is |
 | --- | --- |
-| `index.html` | Home page (正面). The ↑ in the top-right corner leads to the shelf. |
+| `index.html` | Home page (正面). The "Claude vibe-coding projects" link in the top-right corner leads to the gallery. |
+| `topology.html` | Persistent homology: filtration, birth and death, barcode, persistence diagram. |
 | `play.html` | Claude vibe-coding projects — a simple gallery of preview cards, one per project. |
 | `liuguang.html` | 流光 — a mirror ball on a chain, simulated with Rapier (rigid-body physics) and rendered with Three.js. |
 | `qinglv.html`, `fenqiang.html`, `tianqing.html`, `yubi.html` | 四面 — four rooms in traditional Chinese colours. |

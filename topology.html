@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Persistent Homology · Lindsey Ma</title>
+<meta name="description" content="An interactive explainer of persistent homology: filtrations, birth and death of topological features, barcodes and persistence diagrams.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=STIX+Two+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+/* A mathematical explainer: paper-white page, ink lines, two colours only.
+   Blue = H0 (connected components), vermilion = H1 (loops). Everything on the page is computed live from the points. */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --bg:#fbfaf7; --ink:#16181d; --ink-70:rgba(22,24,29,.7); --ink-50:rgba(22,24,29,.5); --ink-30:rgba(22,24,29,.3); --ink-12:rgba(22,24,29,.12); --ink-06:rgba(22,24,29,.06);
+  --h0:#2563c9; --h1:#d9472b; --panel:#fff;
+  --f-ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-math:"STIX Two Text","Cambria Math","Times New Roman",serif;
+}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-ui);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.m{font-family:var(--f-math);font-style:italic;font-size:1.08em}
+.top{display:flex;justify-content:space-between;align-items:center;max-width:1320px;margin:0 auto;padding:18px 24px 0}
+.top a{font-size:14px;font-weight:600;text-decoration:none;border-bottom:1.5px solid transparent;padding:4px 0}
+.top a:hover{border-bottom-color:currentColor}
+.top .zh{font-size:13px;color:var(--ink-50);letter-spacing:.3em}
+header.intro{max-width:1320px;margin:0 auto;padding:22px 24px 6px}
+h1{margin:0;font-size:clamp(26px,3vw,36px);font-weight:700;letter-spacing:-.02em}
+header.intro p{margin:8px 0 0;max-width:46rem;color:var(--ink-70);font-size:15px;line-height:1.55}
+
+main{max-width:1320px;margin:0 auto;padding:18px 24px 60px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(330px,1fr);gap:28px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--ink-12);border-radius:14px}
+
+/* ---------- stage ---------- */
+.stage{padding:14px;position:sticky;top:14px}
+.canvas-wrap{position:relative;width:100%;max-width:calc(100vh - 330px);min-width:min(100%,320px);margin:0 auto;aspect-ratio:1}
+#space{position:absolute;inset:0;width:100%;height:100%;display:block;border-radius:8px;background:#fff;cursor:crosshair;touch-action:none}
+#space.over-pt{cursor:grab} #space.dragging{cursor:grabbing}
+.rlabel{position:absolute;left:10px;top:8px;font-size:13px;color:var(--ink-70);pointer-events:none}
+.rlabel b{font-family:var(--f-math);font-style:italic;font-weight:400;font-size:20px;color:var(--ink)}
+.count{position:absolute;right:10px;top:10px;font-size:12px;color:var(--ink-50);pointer-events:none}
+
+.controls{display:grid;gap:12px;margin-top:14px}
+.scrub{display:flex;align-items:center;gap:12px}
+.btn{font:600 14px/1 var(--f-ui);color:var(--ink);background:#fff;border:1px solid var(--ink-30);border-radius:999px;padding:10px 16px;cursor:pointer;white-space:nowrap;transition:background .2s,border-color .2s}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.sm{font-size:13px;padding:8px 12px}
+input[type=range]{flex:1;accent-color:var(--ink);height:28px}
+.rowbtns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.rowbtns .lab{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-50);margin-right:4px}
+.seg{display:inline-flex;border:1px solid var(--ink-30);border-radius:999px;overflow:hidden}
+.seg button{font:600 13px/1 var(--f-ui);background:#fff;color:var(--ink-70);border:0;padding:8px 12px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+.howto{font-size:13.5px;line-height:1.5;color:var(--ink-70);background:var(--ink-06);border-radius:10px;padding:10px 12px}
+.howto b{color:var(--ink)}
+.t-m{display:none}
+@media (hover:none){.t-d{display:none}.t-m{display:inline}}
+
+/* ---------- right column ---------- */
+.side{display:grid;gap:16px}
+.betti{display:grid;grid-template-columns:1fr 1fr;padding:14px 18px;gap:10px}
+.betti > div{display:flex;flex-direction:column;gap:6px}
+.betti .v{font-family:var(--f-math);font-size:34px;line-height:1}
+.betti .v i{font-style:italic}
+.betti .v span{font-style:normal}
+.betti small{font-size:12.5px;color:var(--ink-50)}
+.b0 .v{color:var(--h0)} .b1 .v{color:var(--h1)}
+.panel{padding:14px 16px 12px}
+.panel h2{margin:0 0 2px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50);display:flex;justify-content:space-between;align-items:baseline}
+.panel h2 span{letter-spacing:0;text-transform:none;font-weight:500}
+.panel canvas{display:block;width:100%}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink-70);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.tip{min-height:20px;font-size:13px;color:var(--ink-70);margin-top:6px}
+.tip b{color:var(--ink)}
+.log{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:5px;font-size:13px;color:var(--ink-70);min-height:84px}
+.log li{display:flex;gap:10px;align-items:baseline;animation:in .35s ease}
+.log li .r{font-family:var(--f-math);font-style:italic;color:var(--ink-50);min-width:5.4em}
+.log li .d{width:7px;height:7px;border-radius:50%;flex:none;transform:translateY(-1px)}
+@keyframes in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.concepts{padding:16px 18px;display:grid;gap:12px;font-size:14px;line-height:1.55;color:var(--ink-70)}
+.concepts h2{margin:0;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50)}
+.concepts p{margin:0}
+.concepts b{color:var(--ink)}
+
+@media (max-width:960px){
+  main{grid-template-columns:1fr}
+  .stage{position:static}
+  .canvas-wrap{max-width:none}
+}
+</style>
+</head>
+<body>
+<nav class="top"><a href="play.html">← All projects</a><span class="zh">拓扑</span></nav>
+<header class="intro">
+  <h1>Persistent homology</h1>
+  <p>Grow a ball around every point and watch the shape they form. Pieces are born, merge and die; loops open and get filled in. The barcode records every feature's life, from birth to death.</p>
+</header>
+
+<main>
+  <section class="card stage" aria-label="Point cloud and its filtration">
+    <div class="canvas-wrap">
+      <canvas id="space" aria-label="Point cloud. Click to add points, drag to move them."></canvas>
+      <div class="rlabel">radius <b>r</b> = <b id="rval">0.000</b></div>
+      <div class="count" id="count"></div>
+    </div>
+    <div class="controls">
+      <div class="scrub">
+        <button class="btn primary" id="play" type="button">▶ Play</button>
+        <input id="r" type="range" min="0" max="1000" value="0" step="1" aria-label="Radius r">
+      </div>
+      <div class="rowbtns">
+        <span class="lab">Data</span>
+        <button class="btn sm" data-preset="twoCircles" type="button">Two loops</button>
+        <button class="btn sm" data-preset="circle" type="button">Noisy circle</button>
+        <button class="btn sm" data-preset="eight" type="button">Figure eight</button>
+        <button class="btn sm" data-preset="clusters" type="button">Clusters</button>
+        <button class="btn sm" data-preset="random" type="button">Random</button>
+        <button class="btn sm" id="clear" type="button">Clear</button>
+      </div>
+      <div class="rowbtns">
+        <span class="lab">Show</span>
+        <button class="btn sm on" id="tBalls" type="button" aria-pressed="true">Balls</button>
+        <button class="btn sm on" id="tCx" type="button" aria-pressed="true">Complex</button>
+        <span class="lab" style="margin-left:10px">Complex</span>
+        <div class="seg" role="group" aria-label="Complex type">
+          <button type="button" id="cech" aria-pressed="true">Čech</button>
+          <button type="button" id="rips" aria-pressed="false">Vietoris–Rips</button>
+        </div>
+      </div>
+      <div class="howto">
+        <b>Drag the slider</b> or press <b>Play</b> to grow the balls.
+        <span class="t-d"><b>Click</b> empty space to add a point, <b>drag</b> a point to move it, <b>double-click</b> a point to delete it.</span>
+        <span class="t-m"><b>Tap</b> to add a point, <b>drag</b> to move it, <b>double-tap</b> to delete it.</span>
+        <b><span class="t-d">Hover</span><span class="t-m">Tap</span> a bar</b> or a dot in the diagram to see which feature it is.
+      </div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="card betti" aria-live="polite">
+      <div class="b0"><div class="v"><i>β</i><sub>0</sub> <span>=</span> <span id="b0">0</span></div><small>connected components</small></div>
+      <div class="b1"><div class="v"><i>β</i><sub>1</sub> <span>=</span> <span id="b1">0</span></div><small>loops (1-dimensional holes)</small></div>
+    </div>
+
+    <div class="card panel">
+      <h2>Barcode <span id="nbars"></span></h2>
+      <canvas id="barcode" height="220"></canvas>
+      <div class="legend"><span><i style="background:var(--h0)"></i>H<sub>0</sub> components</span><span><i style="background:var(--h1)"></i>H<sub>1</sub> loops</span><span><i style="background:var(--ink-30)"></i>dead</span></div>
+      <div class="tip" id="tip">Each bar is one feature: it starts when the feature is born and ends when it dies.</div>
+    </div>
+
+    <div class="card panel">
+      <h2>Persistence diagram <span>birth × death</span></h2>
+      <canvas id="diagram"></canvas>
+    </div>
+
+    <div class="card panel">
+      <h2>Events</h2>
+      <ul class="log" id="log"><li><span class="r">r = 0</span><span>Every point is its own component.</span></li></ul>
+    </div>
+
+    <div class="card concepts">
+      <h2>The four ideas</h2>
+      <p><b>Filtration.</b> Put a ball of radius <span class="m">r</span> around each point. When two balls overlap, join their centres by an edge; when three balls share a common point, fill in the triangle (the Čech complex). As <span class="m">r</span> grows the complex only gains simplices: a nested family of shapes.</p>
+      <p><b>Birth and death.</b> At <span class="m">r</span> = 0 every point is its own component. When two components touch, the younger one dies and merges into the older (the elder rule). A loop is born when an edge closes a cycle and dies when triangles fill it in.</p>
+      <p><b>Barcode.</b> One bar per feature, from birth to death. Long bars are real structure; short bars are noise. <span class="m">β</span><sub>0</sub> and <span class="m">β</span><sub>1</sub> at any <span class="m">r</span> count the bars crossing the vertical line.</p>
+      <p><b>Persistence diagram.</b> The same bars drawn as points (birth, death). Everything sits above the diagonal; the further from it, the longer the feature lived. Points in the shaded corner are alive at the current <span class="m">r</span>.</p>
+    </div>
+  </aside>
+</main>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const C0 = "#2563c9", C1 = "#d9472b", INK = "#16181d";
+const MAXP = 50;
+
+/* ---------------------------------------------------------------- data */
+let pts = [];
+let mode = "cech";
+let R = 0;              // current radius
+let RMAX = 0.3;         // end of the slider
+let res = null;         // computed persistence
+let hover = null;       // {dim, i}
+let showBalls = true, showCx = true;
+
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function ring(r,cx,cy,rad,n,noise,ph=0){const o=[];for(let i=0;i<n;i++){const a=ph+i/n*Math.PI*2+(r()-.5)*.25;const rr=rad+gauss(r)*noise;o.push({x:cx+Math.cos(a)*rr,y:cy+Math.sin(a)*rr});}return o;}
+const PRESETS = {
+  twoCircles(){const r=rng(7);return [...ring(r,.33,.5,.2,18,.012),...ring(r,.74,.52,.12,12,.01,.3)];},
+  circle(){const r=rng(3);return ring(r,.5,.5,.32,26,.03);},
+  eight(){const r=rng(11);return [...ring(r,.31,.5,.19,15,.008),...ring(r,.69,.5,.19,15,.008,Math.PI/15)];},
+  clusters(){const r=rng(5);const c=[[.27,.3],[.72,.28],[.3,.74],[.74,.72]];const o=[];c.forEach(([x,y])=>{for(let i=0;i<7;i++)o.push({x:x+gauss(r)*.04,y:y+gauss(r)*.04});});return o;},
+  random(){const r=rng((Math.random()*1e9)|0);const o=[];for(let i=0;i<28;i++)o.push({x:.1+r()*.8,y:.1+r()*.8});return o;}
+};
+
+/* ---------------------------------------------------------------- persistence */
+function mecRadius(a,b,c){
+  const ab=Math.hypot(a.x-b.x,a.y-b.y), bc=Math.hypot(b.x-c.x,b.y-c.y), ca=Math.hypot(c.x-a.x,c.y-a.y);
+  const s=[ab,bc,ca].sort((p,q)=>p-q);
+  if (s[2]*s[2] >= s[0]*s[0]+s[1]*s[1]) return s[2]/2;              // right or obtuse: the longest side is a diameter
+  const area=Math.abs((b.x-a.x)*(c.y-a.y)-(c.x-a.x)*(b.y-a.y))/2;
+  return ab*bc*ca/(4*area);                                          // acute: circumradius
+}
+function xorSorted(a,b){
+  const o=[];let i=0,j=0;
+  while(i<a.length&&j<b.length){ if(a[i]===b[j]){i++;j++;} else if(a[i]<b[j]) o.push(a[i++]); else o.push(b[j++]); }
+  while(i<a.length)o.push(a[i++]); while(j<b.length)o.push(b[j++]);
+  return o;
+}
+function compute(){
+  const n=pts.length;
+  const out={h0:[],h1:[],edges:[],tris:[],n};
+  if(!n){ res=out; return; }
+  // edges, filtration value = half the distance (balls of radius r touch)
+  const E=[];
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)E.push({a:i,b:j,v:Math.hypot(pts[i].x-pts[j].x,pts[i].y-pts[j].y)/2});
+  E.sort((p,q)=>p.v-q.v);
+  const eIdx=new Int32Array(n*n);
+  E.forEach((e,k)=>{eIdx[e.a*n+e.b]=k;eIdx[e.b*n+e.a]=k;});
+  // H0 by union-find with the elder rule (all births at 0; the component holding the lower index is older)
+  const par=[...Array(n).keys()], mem=[...Array(n)].map((_,i)=>[i]);
+  const find=x=>{while(par[x]!==x){par[x]=par[par[x]];x=par[x];}return x;};
+  for(const e of E){
+    let ra=find(e.a), rb=find(e.b); if(ra===rb) continue;
+    if(ra>rb){const t=ra;ra=rb;rb=t;}                       // rb is the younger one: it dies
+    out.h0.push({b:0,d:e.v,verts:mem[rb].slice(),edge:e});
+    par[rb]=ra; mem[ra]=mem[ra].concat(mem[rb]); mem[rb]=null;
+  }
+  out.h0.push({b:0,d:Infinity,verts:mem[find(0)]});
+  // triangles
+  const T=[];
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)for(let k=j+1;k<n;k++){
+    const e1=eIdx[i*n+j],e2=eIdx[i*n+k],e3=eIdx[j*n+k];
+    const v= mode==="rips" ? Math.max(E[e1].v,E[e2].v,E[e3].v) : Math.max(mecRadius(pts[i],pts[j],pts[k]),E[e1].v,E[e2].v,E[e3].v);
+    T.push({i,j,k,v,col:[e1,e2,e3].sort((p,q)=>p-q)});
+  }
+  T.sort((p,q)=>p.v-q.v);
+  // H1: reduce the boundary matrix of triangles over Z/2 (columns in filtration order)
+  const lowOf=new Map();
+  for(const t of T){
+    let col=t.col;
+    while(col.length){
+      const low=col[col.length-1], other=lowOf.get(low);
+      if(other===undefined) break;
+      col=xorSorted(col,other);
+    }
+    if(col.length){
+      const low=col[col.length-1]; lowOf.set(low,col);
+      const b=E[low].v;
+      if(t.v-b>1e-9) out.h1.push({b,d:t.v,cycle:col.map(k=>E[k])});
+    }
+  }
+  out.edges=E; out.tris=T;
+  out.h0.sort((p,q)=>q.d-p.d);
+  out.h1.sort((p,q)=>p.b-q.b||q.d-p.d);
+  res=out;
+  const finite=[...out.h0.map(x=>x.d),...out.h1.map(x=>x.d)].filter(Number.isFinite);
+  const prevMax=RMAX;
+  RMAX=Math.max(.05,(finite.length?Math.max(...finite):.1)*1.12);
+  if(!dragging && prevMax!==RMAX) R=Math.min(R,RMAX);
+  buildEvents();
+}
+
+/* ---------------------------------------------------------------- events */
+let events=[];
+function buildEvents(){
+  events=[];
+  res.h0.forEach(f=>{ if(Number.isFinite(f.d)) events.push({r:f.d,dim:0,kind:"death",txt:"Two components touch: the younger one dies (H₀ death)."}); });
+  res.h1.forEach(f=>{ events.push({r:f.b,dim:1,kind:"birth",txt:"An edge closes a cycle: a loop is born (H₁ birth)."});
+                      events.push({r:f.d,dim:1,kind:"death",txt:"Triangles fill the loop: it dies (H₁ death)."}); });
+  events.sort((p,q)=>p.r-q.r);
+}
+const logEl=$("log");
+function logCross(r0,r1){
+  if(r1<=r0) return;
+  const hit=events.filter(e=>e.r>r0&&e.r<=r1);
+  if(!hit.length) return;
+  const show = hit.length>3 ? [...hit.slice(-2)] : hit;
+  if(hit.length>3) push(hit[hit.length-3].r,null,`${hit.length-2} more events…`);
+  show.forEach(e=>push(e.r,e.dim,e.txt));
+}
+function push(r,dim,txt){
+  const li=document.createElement("li");
+  li.innerHTML=`<span class="r">r = ${r.toFixed(3)}</span>${dim===null?"":`<span class="d" style="background:${dim?C1:C0}"></span>`}<span>${txt}</span>`;
+  logEl.prepend(li);
+  while(logEl.children.length>4) logEl.lastChild.remove();
+}
+function resetLog(){ logEl.innerHTML=""; push(0,null,`Every point is its own component: ${pts.length} components are born.`); }
+
+/* ---------------------------------------------------------------- canvases */
+const space=$("space"), sctx=space.getContext("2d");
+const bc=$("barcode"), bctx=bc.getContext("2d");
+const dg=$("diagram"), dctx=dg.getContext("2d");
+const off=document.createElement("canvas"), octx=off.getContext("2d");
+let S=600, DPR=1;
+function sizeAll(){
+  DPR=Math.min(2,devicePixelRatio||1);
+  const r=space.getBoundingClientRect(); S=r.width;
+  space.width=off.width=Math.round(S*DPR); space.height=off.height=Math.round(S*DPR);
+  const bw=bc.getBoundingClientRect().width;
+  bc.width=Math.round(bw*DPR); bc.height=Math.round(barH()*DPR); bc.style.height=barH()+"px";
+  const dw=dg.getBoundingClientRect().width, dh=Math.min(dw,300);
+  dg.width=Math.round(dw*DPR); dg.height=Math.round(dh*DPR); dg.style.height=dh+"px";
+  draw();
+}
+function barH(){ const n=res?res.h0.length+res.h1.length:10; return Math.max(170,Math.min(360,40+n*7)); }
+
+const alive=f=>f.b<=R&&R<f.d;
+function draw(){ drawSpace(); drawBarcode(); drawDiagram(); updateStats(); }
+
+function drawSpace(){
+  const c=sctx, k=S*DPR;
+  c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,space.width,space.height);
+  c.fillStyle="#fff"; c.fillRect(0,0,space.width,space.height);
+  // faint grid
+  c.strokeStyle="rgba(22,24,29,.05)"; c.lineWidth=1;
+  for(let i=1;i<10;i++){const p=Math.round(i/10*k)+.5;c.beginPath();c.moveTo(p,0);c.lineTo(p,k);c.moveTo(0,p);c.lineTo(k,p);c.stroke();}
+  if(!res||!res.n){ c.fillStyle="rgba(22,24,29,.45)"; c.font=`${14*DPR}px Inter, sans-serif`; c.textAlign="center"; c.fillText("Click to add points, or pick a data set below.",k/2,k/2); return; }
+  // union of balls: draw opaque offscreen, composite once so overlaps stay flat
+  if(showBalls&&R>0){
+    octx.setTransform(1,0,0,1,0,0); octx.clearRect(0,0,off.width,off.height);
+    octx.fillStyle="#7fa6e6";
+    for(const p of pts){octx.beginPath();octx.arc(p.x*k,p.y*k,R*k,0,Math.PI*2);octx.fill();}
+    c.globalAlpha=.22; c.drawImage(off,0,0); c.globalAlpha=1;
+    c.strokeStyle="rgba(37,99,201,.28)"; c.lineWidth=1*DPR;
+    for(const p of pts){c.beginPath();c.arc(p.x*k,p.y*k,R*k,0,Math.PI*2);c.stroke();}
+  }
+  if(showCx){
+    // filled triangles, flattened offscreen so overlapping ones read as one surface
+    octx.setTransform(1,0,0,1,0,0); octx.clearRect(0,0,off.width,off.height); octx.fillStyle="#16181d";
+    for(const t of res.tris){ if(t.v>R) break; const a=pts[t.i],b=pts[t.j],d=pts[t.k];
+      octx.beginPath();octx.moveTo(a.x*k,a.y*k);octx.lineTo(b.x*k,b.y*k);octx.lineTo(d.x*k,d.y*k);octx.closePath();octx.fill(); } c.globalAlpha=.12; c.drawImage(off,0,0); c.globalAlpha=1;
+    c.strokeStyle="rgba(22,24,29,.62)"; c.lineWidth=1.1*DPR; c.beginPath();
+    for(const e of res.edges){ if(e.v>R) break; const a=pts[e.a],b=pts[e.b]; c.moveTo(a.x*k,a.y*k); c.lineTo(b.x*k,b.y*k); }
+    c.stroke();
+  }
+  // live loops: draw each alive H1 representative
+  for(const [i,f] of res.h1.entries()){
+    const isH=hover&&hover.dim===1&&hover.i===i;
+    if(!(alive(f)||isH)) continue;
+    c.strokeStyle=C1; c.globalAlpha=isH?1:.85; c.lineWidth=(isH?3.4:2.2)*DPR; c.lineCap="round"; c.beginPath();
+    for(const e of f.cycle){const a=pts[e.a],b=pts[e.b];c.moveTo(a.x*k,a.y*k);c.lineTo(b.x*k,b.y*k);} c.stroke(); c.globalAlpha=1;
+  }
+  // hovered H0 component
+  let hv=null;
+  if(hover&&hover.dim===0) hv=new Set(res.h0[hover.i].verts);
+  for(const [i,p] of pts.entries()){
+    c.beginPath(); c.arc(p.x*k,p.y*k,(hv&&hv.has(i)?5:3.6)*DPR,0,Math.PI*2);
+    c.fillStyle=hv&&hv.has(i)?C0:INK; c.fill();
+    if(i===overPt){c.strokeStyle=INK;c.lineWidth=1.2*DPR;c.beginPath();c.arc(p.x*k,p.y*k,9*DPR,0,Math.PI*2);c.stroke();}
+  }
+}
+
+let barRows=[];   // for hit testing: {y0,y1,dim,i}
+function drawBarcode(){
+  const c=bctx, W=bc.width/DPR, H=bc.height/DPR;
+  c.setTransform(DPR,0,0,DPR,0,0); c.clearRect(0,0,W,H);
+  barRows=[];
+  if(!res||!res.n) return;
+  const L=34, Rr=W-10, top=6, axisY=H-22;
+  const x=r=>L+(Math.min(r,RMAX)/RMAX)*(Rr-L);
+  const n0=res.h0.length, n1=res.h1.length, gap=14;
+  const rowH=Math.max(2.5,Math.min(9,(axisY-top-gap-8)/Math.max(1,n0+n1)));
+  const bh=Math.max(1.6,rowH*.62);
+  // axis
+  c.strokeStyle="rgba(22,24,29,.25)"; c.lineWidth=1; c.beginPath(); c.moveTo(L,axisY+.5); c.lineTo(Rr,axisY+.5); c.stroke();
+  c.fillStyle="rgba(22,24,29,.5)"; c.font="11px Inter, sans-serif"; c.textAlign="center";
+  const step=niceStep(RMAX/5);
+  for(let t=0;t<=RMAX+1e-9;t+=step){c.fillRect(x(t)-.5,axisY,1,4);c.fillText(+t.toFixed(3)+"",x(t),axisY+16);}
+  c.textAlign="left"; c.font="italic 13px 'STIX Two Text', serif"; c.fillStyle=INK; c.fillText("r",Rr-6,axisY-6);
+  let y=top;
+  const section=(arr,dim)=>{
+    c.fillStyle=dim?C1:C0; c.font="600 11px Inter, sans-serif"; c.textAlign="left";
+    c.fillText(dim?"H₁":"H₀",4,y+Math.min(arr.length*rowH,rowH*4)/2+4);
+    arr.forEach((f,i)=>{
+      const yy=y+i*rowH+(rowH-bh)/2, x0=x(f.b), x1=Number.isFinite(f.d)?x(f.d):Rr;
+      const isH=hover&&hover.dim===dim&&hover.i===i;
+      const col=dim?C1:C0;
+      if(f.b>R){ c.strokeStyle=col; c.globalAlpha=.35; c.lineWidth=1; c.strokeRect(x0+.5,yy+.5,Math.max(1,x1-x0)-1,bh-1); }
+      else if(f.d<=R){ c.fillStyle="rgba(22,24,29,.22)"; c.fillRect(x0,yy,x1-x0,bh); c.globalAlpha=1; c.fillStyle=col; c.globalAlpha=.35; c.fillRect(x0,yy,Math.max(0,x1-x0),bh); }
+      else { c.fillStyle=col; c.globalAlpha=1; c.fillRect(x0,yy,x1-x0,bh); }
+      c.globalAlpha=1;
+      if(!Number.isFinite(f.d)){ c.fillStyle=col; c.beginPath(); c.moveTo(Rr,yy-2); c.lineTo(Rr+6,yy+bh/2); c.lineTo(Rr,yy+bh+2); c.fill(); }
+      if(isH){ c.strokeStyle=INK; c.lineWidth=1.5; c.strokeRect(x0-2,yy-2,x1-x0+4,bh+4); }
+      barRows.push({y0:y+i*rowH,y1:y+(i+1)*rowH,dim,i});
+    });
+    y+=arr.length*rowH;
+  };
+  section(res.h0,0); y+=gap;
+  if(n1) section(res.h1,1);
+  else { c.fillStyle="rgba(22,24,29,.4)"; c.font="12px Inter, sans-serif"; c.fillText("H₁  no loops in this data",4,y+8); }
+  // current r
+  c.strokeStyle=INK; c.lineWidth=1.5; c.beginPath(); c.moveTo(x(R),2); c.lineTo(x(R),axisY); c.stroke();
+  $("nbars").textContent=`${n0} components · ${n1} loop${n1===1?"":"s"}`;
+}
+function niceStep(s){const p=Math.pow(10,Math.floor(Math.log10(s)));const m=s/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+
+let dgPts=[];
+function drawDiagram(){
+  const c=dctx, W=dg.width/DPR, H=dg.height/DPR;
+  c.setTransform(DPR,0,0,DPR,0,0); c.clearRect(0,0,W,H); dgPts=[];
+  if(!res||!res.n) return;
+  const pad=34, side=Math.min(W-pad-14,H-pad-18), ox=pad+(W-pad-14-side)/2, oy=10;
+  const X=v=>ox+v/RMAX*side, Y=v=>oy+side-Math.min(v,RMAX)/RMAX*side;
+  const yInf=oy-2;
+  // alive region: birth ≤ r < death
+  c.fillStyle="rgba(22,24,29,.06)"; c.fillRect(X(0),yInf,X(R)-X(0),Y(R)-yInf);
+  c.strokeStyle="rgba(22,24,29,.25)"; c.lineWidth=1; c.strokeRect(ox+.5,oy+.5,side,side);
+  c.setLineDash([4,4]); c.beginPath(); c.moveTo(X(0),Y(0)); c.lineTo(X(RMAX),Y(RMAX)); c.stroke(); c.setLineDash([]);
+  c.strokeStyle=INK; c.lineWidth=1; c.beginPath(); c.moveTo(X(R),yInf); c.lineTo(X(R),Y(R)); c.lineTo(X(0),Y(R)); c.stroke();
+  c.fillStyle="rgba(22,24,29,.55)"; c.font="11px Inter, sans-serif"; c.textAlign="center";
+  c.fillText("birth",ox+side/2,oy+side+26); c.save(); c.translate(12,oy+side/2); c.rotate(-Math.PI/2); c.fillText("death",0,0); c.restore();
+  c.textAlign="right"; c.fillText("∞",ox-6,oy+8); c.fillText("0",ox-6,oy+side);
+  const dot=(f,dim,i)=>{
+    const px=X(f.b), py=Number.isFinite(f.d)?Y(f.d):oy+3, isH=hover&&hover.dim===dim&&hover.i===i;
+    const live=alive(f), col=dim?C1:C0;
+    c.globalAlpha=live?1:f.d<=R?.3:.55; c.fillStyle=col; c.strokeStyle=col;
+    c.beginPath();
+    if(dim){ const s=isH?7:5; c.moveTo(px,py-s); c.lineTo(px+s,py); c.lineTo(px,py+s); c.lineTo(px-s,py); c.closePath(); }
+    else c.arc(px,py,isH?5.5:3.8,0,Math.PI*2);
+    live||f.d<=R ? c.fill() : (c.lineWidth=1.2, c.stroke());
+    c.globalAlpha=1;
+    if(isH){ c.strokeStyle=INK; c.lineWidth=1.2; c.beginPath(); c.arc(px,py,10,0,Math.PI*2); c.stroke(); }
+    dgPts.push({x:px,y:py,dim,i});
+  };
+  res.h0.forEach((f,i)=>dot(f,0,i)); res.h1.forEach((f,i)=>dot(f,1,i));
+}
+
+function updateStats(){
+  $("rval").textContent=R.toFixed(3);
+  if(!res) return;
+  $("b0").textContent=res.h0.filter(alive).length;
+  $("b1").textContent=res.h1.filter(alive).length;
+  $("count").textContent=`${pts.length} point${pts.length===1?"":"s"}${pts.length>=MAXP?" (max)":""}`;
+  const sl=$("r"); sl.value=Math.round(R/RMAX*1000);
+  if(hover){
+    const f=(hover.dim?res.h1:res.h0)[hover.i];
+    const what=hover.dim?"Loop (H₁)":"Component (H₀)";
+    const d=Number.isFinite(f.d)?f.d.toFixed(3):"∞";
+    const life=Number.isFinite(f.d)?(f.d-f.b).toFixed(3):"∞";
+    $("tip").innerHTML=`<b>${what}</b> · born r = ${f.b.toFixed(3)} · dies r = ${d} · lifetime ${life}${hover.dim?"":(Number.isFinite(f.d)?` · ${f.verts.length} point${f.verts.length>1?"s":""}`:" · never dies")}`;
+  } else $("tip").textContent="Each bar is one feature: it starts when the feature is born and ends when it dies.";
+}
+
+/* ---------------------------------------------------------------- interaction */
+let dirty=true, recompute=true;
+function frame(){
+  if(recompute){ compute(); recompute=false; sizeBar(); dirty=true; }
+  if(playing){
+    const now=performance.now(), dt=Math.min(.05,(now-lastT)/1000); lastT=now;
+    const r0=R; R=Math.min(RMAX,R+RMAX*dt/9); logCross(r0,R); dirty=true;
+    if(R>=RMAX) setPlay(false);
+  }
+  if(dirty){ draw(); dirty=false; }
+  requestAnimationFrame(frame);
+}
+let lastBarH=0;
+function sizeBar(){ const h=barH(); if(h!==lastBarH){ lastBarH=h; sizeAll(); } }
+
+let playing=false, lastT=0;
+function setPlay(on){
+  playing=on; $("play").textContent=on?"❚❚ Pause":"▶ Play";
+  if(on){ if(R>=RMAX-1e-9){ R=0; resetLog(); } lastT=performance.now(); }
+}
+$("play").addEventListener("click",()=>setPlay(!playing));
+$("r").addEventListener("input",e=>{ const r0=R; R=e.target.value/1000*RMAX; if(R<r0&&R<1e-9) resetLog(); logCross(r0,R); setPlay(false); dirty=true; });
+
+function load(name){ pts=PRESETS[name](); R=0; hover=null; setPlay(false); recompute=true; resetLog(); }
+document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>load(b.dataset.preset)));
+$("clear").addEventListener("click",()=>{ pts=[]; R=0; hover=null; setPlay(false); recompute=true; resetLog(); });
+const tog=(id,fn)=>$(id).addEventListener("click",e=>{ const on=e.currentTarget.getAttribute("aria-pressed")!=="true"; e.currentTarget.setAttribute("aria-pressed",on); e.currentTarget.classList.toggle("on",on); fn(on); dirty=true; });
+tog("tBalls",on=>showBalls=on); tog("tCx",on=>showCx=on);
+const setMode=m=>{ mode=m; $("cech").setAttribute("aria-pressed",m==="cech"); $("rips").setAttribute("aria-pressed",m==="rips"); recompute=true; };
+$("cech").addEventListener("click",()=>setMode("cech")); $("rips").addEventListener("click",()=>setMode("rips"));
+
+// points on the canvas
+let dragging=-1, overPt=-1, downAt=null;
+const toU=e=>{const r=space.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};};
+function nearest(u){ let best=-1,bd=(14/S)**2; pts.forEach((p,i)=>{const d=(p.x-u.x)**2+(p.y-u.y)**2;if(d<bd){bd=d;best=i;}}); return best; }
+space.addEventListener("pointerdown",e=>{
+  const u=toU(e); let i=nearest(u);
+  if(i<0){ if(pts.length>=MAXP) return; pts.push({x:u.x,y:u.y}); i=pts.length-1; recompute=true; }
+  dragging=i; space.setPointerCapture(e.pointerId); space.classList.add("dragging");
+});
+space.addEventListener("pointermove",e=>{
+  const u=toU(e);
+  if(dragging>=0){ pts[dragging]={x:Math.min(.99,Math.max(.01,u.x)),y:Math.min(.99,Math.max(.01,u.y))}; recompute=true; return; }
+  const i=nearest(u); if(i!==overPt){ overPt=i; space.classList.toggle("over-pt",i>=0); dirty=true; }
+});
+const up=()=>{ dragging=-1; space.classList.remove("dragging"); };
+space.addEventListener("pointerup",up); space.addEventListener("pointercancel",up);
+space.addEventListener("pointerleave",()=>{ if(overPt>=0){overPt=-1;dirty=true;} });
+space.addEventListener("dblclick",e=>{ const i=nearest(toU(e)); if(i>=0){ pts.splice(i,1); overPt=-1; hover=null; recompute=true; } });
+space.addEventListener("contextmenu",e=>{ const i=nearest(toU(e)); if(i>=0){ e.preventDefault(); pts.splice(i,1); overPt=-1; hover=null; recompute=true; } });
+
+// hovering bars and diagram points
+const barHit=e=>{ const r=bc.getBoundingClientRect(), y=e.clientY-r.top; const row=barRows.find(b=>y>=b.y0&&y<b.y1); setHover(row?{dim:row.dim,i:row.i}:null); };
+bc.addEventListener("pointermove",barHit); bc.addEventListener("pointerdown",barHit);
+bc.addEventListener("pointerleave",()=>setHover(null));
+const dgHit=e=>{ const r=dg.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top; let best=null,bd=100; dgPts.forEach(p=>{const d=(p.x-x)**2+(p.y-y)**2;if(d<bd){bd=d;best=p;}}); setHover(best?{dim:best.dim,i:best.i}:null); };
+dg.addEventListener("pointermove",dgHit); dg.addEventListener("pointerdown",dgHit);
+dg.addEventListener("pointerleave",()=>setHover(null));
+function setHover(h){ if(JSON.stringify(h)!==JSON.stringify(hover)){ hover=h; dirty=true; } }
+
+addEventListener("keydown",e=>{
+  if(e.target.closest("input,button")&&e.key!==" ") return;
+  if(e.key===" "){ e.preventDefault(); setPlay(!playing); }
+  if(e.key==="ArrowRight"||e.key==="ArrowLeft"){ const r0=R; R=Math.max(0,Math.min(RMAX,R+(e.key==="ArrowRight"?1:-1)*RMAX/100)); logCross(r0,R); setPlay(false); dirty=true; }
+});
+addEventListener("resize",sizeAll);
+
+load("twoCircles");
+compute(); recompute=false; sizeAll(); lastBarH=barH();
+requestAnimationFrame(frame);
+window.__topo={get res(){return res;},setR(v){R=v;dirty=true;},bench(){const t=performance.now();compute();return performance.now()-t;}};
+})();
+</script>
+</body>
+</html>

@@ -57,7 +57,8 @@
       transition: box-shadow .5s ease, transform .5s cubic-bezier(.2,.7,.2,1);
     }
     .card.feature .frame { aspect-ratio: 16 / 8; }
-    .card.feature img { object-position: center 20%; }
+    .card.feature:first-child img { object-position: center 20%; }
+    .card.feature:not(:first-child) img { object-position: center 30%; }
     .frame img {
       display: block; width: 100%; height: 100%; object-fit: cover;
       transition: transform 1.2s cubic-bezier(.2,.7,.2,1), filter .6s ease;
@@ -148,9 +149,14 @@
         <p class="desc">An ancient jade disc. Your cursor is the light.</p>
         <ul class="tags"><li>Cursor is the light</li><li>Colour-shifting jade</li><li>WebGL shader</li></ul>
       </a>
+      <a class="card feature" href="topology.html">
+        <div class="frame"><img src="images/play/topology.webp" alt="Points on two loops with growing balls, the simplicial complex, and a barcode of births and deaths" width="1200" height="750" loading="lazy"></div>
+        <div class="meta"><span class="num">06</span><span class="zh">拓扑</span><span class="en">Persistent Homology</span></div>
+        <p class="desc">Grow balls around points and watch components and loops be born and die, recorded live as a barcode.</p>
+        <ul class="tags"><li>Filtration</li><li>Birth &amp; death</li><li>Barcode</li><li>Persistence diagram</li><li>Draw your own points</li></ul>
+      </a>
     </section>
 
-    <p class="soon"><span class="num">06</span><span><b>Topology</b> · coming soon</span></p>
   </main>
 </body>
 </html>
