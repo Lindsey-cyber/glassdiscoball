@@ -197,7 +197,8 @@ footer a{color:var(--ink-70)}
       <div class="ch-h"><span class="n">2</span><h2>Wired from the connectome</h2><span class="zh">连接组</span></div>
       <p>Nobody hand-designed this network. The <b id="nNeur">152 neurons</b> and their <b id="nSyn">129,473 synapses</b> come from <span id="srcTxt">the hemibrain, an electron-microscopy reconstruction of a female fly's brain</span>. Each neuron's input is the sum of its partners' activity weighted by how many synapses connect them.</p>
       <p><b>Two brains.</b> Switch <b>Brain</b> to <b>FlyWire</b> to rewire the same model from a second, independently reconstructed fly: a whole female brain imaged and proofread by a different team with different software. FlyWire does not label the bridge glomeruli, so each E-PG neuron's place on the ring was <b>inferred from its wiring alone</b> (neurons in the same wedge share partners); on the hemibrain, where the answer is known, that inference is off by 7° on average, less than half a wedge. Fitted the same way, the FlyWire circuit also forms a bump that follows the fly. Over 20 s in the dark it drifts about as much as the hemibrain circuit (28° average error against 29°), though it is less precise over the first few seconds (18° against 12°).</p>
-      <p>Only <b>49 numbers</b> were fitted, never the synapse counts: one gain for each pair of cell types, plus a bias and a time constant per type. With raw synapse counts and a single overall gain, no stable bump forms.</p>
+      <p>Only <b>49 numbers</b> were fitted, never the synapse counts: one gain for each pair of cell types, a bias and a time constant per type, and one gain on the angular-velocity input. The model has six cell types, so that is 36 + 6 + 6 + 1 = 49. With raw synapse counts and a single overall gain, no stable bump forms.</p>
+      <div class="note" style="margin:0 0 14px"><b>The six cell types.</b> E-PG carry the bump from ring to bridge; P-EN1 and P-EN2 shift it when the fly turns; P-EG carry it back to the ring; Δ7 spread inhibition across the bridge; and <b>E-PGt</b> are four E-PG-like neurons that innervate the outermost bridge glomeruli. E-PGt have their own gains in the fit, but the matrix below draws them in the E-PG block.</div>
       <div class="card panel">
         <h3>Connection matrix <span id="wInfo">152 × 152 · hemibrain</span></h3>
         <canvas id="mat"></canvas>
@@ -263,7 +264,7 @@ footer a{color:var(--ink-70)}
           <span>shaded corner: alive at <span class="m">ε</span></span>
         </div>
       </div>
-      <p style="margin-top:12px"><b>How do we know a loop is not chance?</b> The shuffle test slides each neuron's time series by a random offset. Every neuron keeps its own firing statistics, but the coordination between neurons is destroyed. The longest loop any shuffle produces sets the grey band. A loop that rises above the band is real.</p>
+      <p style="margin-top:12px"><b>How do we know a loop is not chance?</b> The shuffle test slides each neuron's time series by a random offset. Every neuron keeps its own firing statistics, but the coordination between neurons is destroyed. The longest loop any shuffle produces sets the grey band. A loop that rises above the band is real. With 20 shuffles, a recording with no structure would beat all of them with probability 1/21, so clearing the band is a test at roughly the 5% level.</p>
     </section>
 
     <!-- 5 -->
@@ -299,7 +300,7 @@ footer a{color:var(--ink-70)}
         </div>
       </div>
       <p style="margin-top:12px"><b>The ring survives sleep.</b> In REM sleep the eyes are closed and the head is still, yet the bump keeps travelling around the same loop, as Chaudhuri et al. (2019) found. The fly model's ring came from wiring; the mouse's ring is also internal: it is a property of the network, not of what the animal sees.</p>
-      <div class="note"><b>How the mouse data were processed.</b> 100 ms bins, square root, 200 ms smoothing; each moment divided by the total population activity (otherwise the overall firing level dominates); z-scored; top 6 principal components; the 80% most active moments, then the densest half; 400 points evenly spaced in time. The grey band comes from 50 surrogates that circularly shift each cell's spike train, sent through the identical pipeline. These diagrams were computed offline with Ripser; the analysis code is in the repository.</div>
+      <div class="note"><b>How the mouse data were processed.</b> 100 ms bins, square root, 200 ms smoothing; each moment divided by the total population activity (otherwise the overall firing level dominates); z-scored; top 6 principal components; the 80% most active moments, then the densest half; 400 points evenly spaced in time. The grey band comes from 50 surrogates that circularly shift each cell's spike train, sent through the identical pipeline; it is the longest loop any of them produces, so clearing it is a test at about the 2% level (1/51). These diagrams were computed offline with Ripser; the analysis code is in the repository.</div>
     </section>
 
     <section class="ch" id="c7">
@@ -385,7 +386,12 @@ let eps = 0, hover = null, playing = false;
 
 // Every (re)start pre-runs a minute of wandering in the background, so the topology chapter has data the moment
 // a visitor arrives instead of an empty buffer.
-function warmUp() { for (let k = 0; k < 6000; k++) stepOnce(ouStep()); heading = wrap(heading); }
+// The warm-up drifts like any minute in the dark, so the fly is then put where its neurons think it is (error 0).
+function warmUp() {
+  for (let k = 0; k < 6000; k++) stepOnce(ouStep());
+  const shift = wrap(c.decode().angle - heading); heading += shift;   // same rotation for the recorded headings
+  for (let i = 0; i < hbuf.length; i++) hbuf[i] += shift;
+}
 function restart() { c.reset(); cueSteps = 50; buf.length = 0; hbuf.length = 0; S = null; warmUp(); setEpsUI(); drawLab(); verdict(); drawMatrix(); }
 $("cond").addEventListener("change", e => { c.setCondition(e.target.value); restart(); });
 $("reset").addEventListener("click", () => { heading = 0; restart(); });
