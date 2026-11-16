@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=STIX+Two+Text:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
 /* Sister page of topology.html: same paper-white, ink lines, blue = H0, vermilion = H1.
    Everything is computed live: the circuit runs in the page, Ripser (WebAssembly) runs in a worker. */
@@ -18,78 +18,146 @@
   --h0:#2563c9; --h1:#d9472b; --bump:#e0572f;
   --f-ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --f-math:"STIX Two Text","Times New Roman",serif;
 }
+html{scroll-behavior:smooth}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-ui);-webkit-font-smoothing:antialiased}
 a{color:inherit}
+.m{font-family:var(--f-math);font-style:italic;font-size:1.1em}
 .top{display:flex;justify-content:space-between;align-items:center;max-width:1320px;margin:0 auto;padding:18px 24px 0}
 .top a{font-size:14px;font-weight:600;text-decoration:none;border-bottom:1.5px solid transparent;padding:4px 0}
 .top a:hover{border-bottom-color:currentColor}
 .top .zh{font-size:13px;color:var(--ink-50);letter-spacing:.3em}
-header.intro{max-width:1320px;margin:0 auto;padding:22px 24px 6px}
-h1{margin:0;font-size:clamp(26px,3vw,36px);font-weight:700;letter-spacing:-.02em}
-header.intro p{margin:8px 0 0;max-width:50rem;color:var(--ink-70);font-size:15px;line-height:1.55}
-main{max-width:1320px;margin:0 auto;padding:18px 24px 60px;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,1fr);gap:28px;align-items:start}
+header.intro{max-width:1320px;margin:0 auto;padding:26px 24px 4px}
+.kicker{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--h1);margin:0 0 10px}
+h1{margin:0;font-size:clamp(28px,3.4vw,42px);font-weight:700;letter-spacing:-.025em;line-height:1.1;max-width:22em}
+header.intro p.lede{margin:12px 0 0;max-width:46rem;color:var(--ink-70);font-size:16px;line-height:1.6}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin:18px 0 0;padding:0;list-style:none}
+.toc a{display:inline-flex;gap:7px;align-items:baseline;font-size:13px;font-weight:500;text-decoration:none;color:var(--ink-70);border:1px solid var(--ink-12);background:#fff;border-radius:999px;padding:7px 12px}
+.toc a:hover{border-color:var(--ink);color:var(--ink)}
+.toc a span{font-family:var(--f-math);color:var(--ink-50)}
+
+main{max-width:1320px;margin:0 auto;padding:22px 24px 70px;display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,1.05fr);gap:32px;align-items:start}
 .card{background:#fff;border:1px solid var(--ink-12);border-radius:14px}
+
+/* ---------- live bench (sticky) ---------- */
 .bench{padding:14px;position:sticky;top:14px}
-.ringwrap{position:relative;width:100%;max-width:calc(100vh - 520px);min-width:min(100%,300px);margin:0 auto;aspect-ratio:1}
+.bench-h{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50);margin:0 2px 4px}
+.bench-h .live{display:inline-flex;align-items:center;gap:6px;letter-spacing:.08em}
+.bench-h .live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--bump);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.ringwrap{position:relative;width:100%;max-width:calc(100vh - 500px);min-width:min(100%,280px);margin:0 auto;aspect-ratio:1}
 #ring{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
 #ring.drag{cursor:grabbing}
-.ringlabel{position:absolute;left:4px;top:2px;font-size:12px;color:var(--ink-50);pointer-events:none}
-#pb{display:block;width:100%;height:96px;margin-top:8px}
-.read{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 0;font-size:12px;color:var(--ink-50)}
+#pb{display:block;width:100%;height:92px;margin-top:6px}
+.read{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 0;font-size:12px;color:var(--ink-50)}
 .read b{display:block;font:400 20px/1.1 var(--f-math);color:var(--ink);font-variant-numeric:tabular-nums}
+.read .dec b{color:var(--h0)}
 .controls{display:grid;gap:10px;margin-top:12px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .lab{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-50);margin-right:4px}
-.btn{font:600 13px/1 var(--f-ui);color:var(--ink);background:#fff;border:1px solid var(--ink-30);border-radius:999px;padding:9px 14px;cursor:pointer;white-space:nowrap}
+.btn{font:600 13px/1 var(--f-ui);color:var(--ink);background:#fff;border:1px solid var(--ink-30);border-radius:999px;padding:9px 14px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
 .btn:hover{border-color:var(--ink)} .btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.ghost{border-style:dashed}
 .btn:disabled{opacity:.4;cursor:default}
-select{font:600 13px/1 var(--f-ui);padding:8px 10px;border-radius:10px;border:1px solid var(--ink-30);background:#fff;color:var(--ink)}
-.howto{font-size:13.5px;line-height:1.5;color:var(--ink-70);background:var(--ink-06);border-radius:10px;padding:10px 12px}
+select{font:600 13px/1 var(--f-ui);padding:8px 10px;border-radius:10px;border:1px solid var(--ink-30);background:#fff;color:var(--ink);max-width:100%}
+.howto{font-size:13px;line-height:1.5;color:var(--ink-70);background:var(--ink-06);border-radius:10px;padding:9px 12px}
 .howto b{color:var(--ink)}
-.side{display:grid;gap:16px}
+
+/* ---------- story column ---------- */
+.story{display:grid;gap:44px}
+.ch{scroll-margin-top:16px}
+.ch-h{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:baseline;margin:0 0 12px}
+.ch-h .n{font:400 34px/1 var(--f-math);color:var(--ink-30);grid-row:span 2}
+.ch-h h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.2}
+.ch-h .zh{font-size:12px;color:var(--ink-50);letter-spacing:.25em}
+.ch > p{margin:0 0 12px;font-size:15px;line-height:1.65;color:var(--ink-70);max-width:40rem}
+.ch > p b{color:var(--ink);font-weight:600}
 .panel{padding:14px 16px}
-.panel h2{margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50);display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-.panel h2 span{letter-spacing:0;text-transform:none;font-weight:500}
+.panel + .panel{margin-top:12px}
+.panel h3{margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50);display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.panel h3 span{letter-spacing:0;text-transform:none;font-weight:500}
 .panel canvas{display:block;width:100%}
 .cap{font-size:13px;line-height:1.5;color:var(--ink-70);margin:8px 0 0}
-.verdict{font-size:14px;line-height:1.45;margin-top:8px;min-height:40px}
+.cap b{color:var(--ink)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink-70);margin-top:8px;flex-wrap:wrap;align-items:center}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.legend .dot{width:9px;height:9px;border-radius:50%}
+.legend .band{width:16px;height:10px;border-radius:2px;background:rgba(22,24,29,.1)}
+
+/* filtration lab */
+.lab-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.lab-grid .wide{grid-column:1 / -1}
+.scrub{display:flex;align-items:center;gap:12px;margin-top:10px}
+.scrub input{flex:1;accent-color:var(--ink);height:28px}
+.eps{font:400 15px/1 var(--f-math);min-width:6.5em;text-align:right;font-variant-numeric:tabular-nums}
+.eps i{font-size:19px}
+.alive{display:flex;gap:18px;font-size:13px;color:var(--ink-70);margin-top:4px}
+.alive b{font:400 22px/1 var(--f-math);margin-right:4px}
+.alive .a0 b{color:var(--h0)} .alive .a1 b{color:var(--h1)}
+.verdict{font-size:14.5px;line-height:1.5;margin-top:10px;min-height:44px;padding:10px 12px;border-radius:10px;background:var(--ink-06)}
 .verdict b{color:var(--h1)}
+.tip{min-height:20px;font-size:13px;color:var(--ink-70);margin-top:6px}
+.tip b{color:var(--ink)}
+#filt,#dgm{aspect-ratio:1;height:auto}
+.empty{position:relative}
+
+/* experiments */
+.exps{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.exp{padding:12px;border:1px solid var(--ink-12);border-radius:12px;background:#fff}
+.exp h4{margin:0 0 2px;font-size:14px;font-weight:600}
+.exp .what{margin:0 0 6px;font-size:12.5px;color:var(--ink-50);line-height:1.4;min-height:2.8em}
+.exp canvas{display:block;width:100%;aspect-ratio:1;height:auto}
+.exp .res{font-size:13px;margin-top:6px;line-height:1.4;min-height:2.8em;color:var(--ink-70)}
+.exp .res b{color:var(--ink)}
+.exp.yes .res b{color:var(--h1)}
+
 .prose{padding:16px 18px;display:grid;gap:12px;font-size:14px;line-height:1.6;color:var(--ink-70)}
-.prose h2{margin:0;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50)}
+.prose h3{margin:0;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50)}
 .prose p{margin:0} .prose b{color:var(--ink)}
-.prose .note{font-size:13px;background:var(--ink-06);border-radius:10px;padding:10px 12px}
+.note{font-size:13.5px;line-height:1.55;background:var(--ink-06);border-radius:10px;padding:11px 13px;color:var(--ink-70)}
+.note b{color:var(--ink)}
 .refs{font-size:12.5px;line-height:1.55;color:var(--ink-50);padding-left:18px;margin:0}
 .refs a{color:var(--ink-70)}
 .err{max-width:40rem;margin:40px auto;padding:16px;border:1px solid var(--h1);border-radius:12px;color:var(--h1);font-size:14px;display:none}
-@media (max-width:980px){main{grid-template-columns:1fr}.bench{position:static}.ringwrap{max-width:440px}}
+footer{max-width:1320px;margin:0 auto;padding:0 24px 40px;font-size:13px;color:var(--ink-50)}
+footer a{color:var(--ink-70)}
+@media (max-width:1020px){main{grid-template-columns:1fr}.bench{position:static}.ringwrap{max-width:420px}}
+@media (max-width:560px){.lab-grid,.exps{grid-template-columns:1fr}.read b{font-size:17px}main{padding:16px 14px 60px}header.intro,.top{padding-left:14px;padding-right:14px}}
 </style>
 </head>
 <body>
-<nav class="top"><a href="play.html">← All projects</a><span class="zh">罗盘</span></nav>
+<nav class="top"><a href="play.html">← All projects</a><span class="zh">罗盘 · 环</span></nav>
 <header class="intro">
+  <p class="kicker">Connectome · Dynamics · Topology</p>
   <h1>The fly's compass is a ring. Is its activity one too?</h1>
-  <p>A fruit fly keeps track of where it is facing with a ring of neurons in its brain. Here that circuit runs live, wired with real synapse counts from the fly connectome. Turn the fly, watch the bump of activity follow, then ask topology whether the network's activity lies on a ring.</p>
+  <p class="lede">A fruit fly knows which way it faces with a ring of neurons in its brain. On the left that circuit is running live, wired with real synapse counts from the fly connectome. Turn the fly, watch the bump of activity follow, then use persistent homology to ask whether the activity itself lies on a ring.</p>
+  <ol class="toc">
+    <li><a href="#c1"><span>1</span>A ring in the brain</a></li>
+    <li><a href="#c2"><span>2</span>Wired from the connectome</a></li>
+    <li><a href="#c3"><span>3</span>The shape of activity</a></li>
+    <li><a href="#c4"><span>4</span>Birth and death of a loop</a></li>
+    <li><a href="#c5"><span>5</span>Break the circuit</a></li>
+  </ol>
 </header>
 <div class="err" id="err"></div>
 
 <main>
-  <section class="card bench" aria-label="Simulation">
+  <section class="card bench" aria-label="Live simulation">
+    <div class="bench-h"><span>Ellipsoid body · 16 wedges</span><span class="live">live</span></div>
     <div class="ringwrap">
       <canvas id="ring" aria-label="Ellipsoid body: drag around the ring to turn the fly"></canvas>
-      <div class="ringlabel">Ellipsoid body · 16 wedges · E-PG activity</div>
     </div>
     <canvas id="pb" aria-label="Protocerebral bridge activity by cell type"></canvas>
     <div class="read">
-      <div>heading<b id="rTrue">0°</b></div>
-      <div>decoded<b id="rDec">0°</b></div>
+      <div>true heading<b id="rTrue">0°</b></div>
+      <div class="dec">decoded<b id="rDec">0°</b></div>
       <div>error<b id="rErr">0°</b></div>
       <div>bump<b id="rBump">0.00</b></div>
     </div>
     <div class="controls">
       <div class="row">
         <button class="btn on" id="auto" type="button" aria-pressed="true">Auto-turn</button>
-        <button class="btn" id="lights" type="button" aria-pressed="false">Landmark: off (dark)</button>
+        <button class="btn" id="lights" type="button" aria-pressed="false">Landmark: off</button>
         <button class="btn" id="reset" type="button">Reset</button>
       </div>
       <div class="row">
@@ -101,55 +169,123 @@ select{font:600 13px/1 var(--f-ui);padding:8px 10px;border-radius:10px;border:1p
           <option value="shuffled">Fitted, wiring shuffled within cell types</option>
         </select>
       </div>
-      <div class="howto"><b>Drag around the ring</b> (or press <b>← →</b>) to turn the fly; <b>Auto-turn</b> lets it wander. The orange bump should follow the fly in the dark. Switch the <b>circuit</b> to break it.</div>
+      <div class="howto"><b>Drag around the ring</b> (or hold <b>← →</b>) to turn the fly. The orange bump should follow it, and the <span style="color:var(--h0)"><b>blue arrow</b></span> is where the neurons think it is facing.</div>
     </div>
   </section>
 
-  <aside class="side">
-    <div class="card panel">
-      <h2>State space <span id="recN">0 s recorded</span></h2>
-      <canvas id="pca" height="300"></canvas>
-      <p class="cap">Each dot is one moment: the 46 E-PG firing rates as a point in 46-dimensional space, projected onto its two main axes. Colour is the fly's true heading.</p>
-    </div>
+  <div class="story">
+    <!-- 1 -->
+    <section class="ch" id="c1">
+      <div class="ch-h"><span class="n">1</span><h2>A ring in the brain</h2><span class="zh">椭球体</span></div>
+      <p>In the middle of the fly brain is a doughnut-shaped structure, the <b>ellipsoid body</b>. About 46 <b>E-PG</b> neurons tile it in 16 wedges. At any moment a single <b>bump</b> of activity sits somewhere on the ring, and when the fly turns, the bump turns with it, even in complete darkness. The fly is integrating its own angular velocity, like a sailor doing dead reckoning.</p>
+      <p>That is what the ring on the left shows. Each wedge's orange is the mean firing of the E-PG neurons in it. The strip underneath is the <b>protocerebral bridge</b>, where the same neurons hand the bump to <b>P-EN</b> cells, which shift it left or right as the fly turns.</p>
+      <div class="note"><b>Try it.</b> Switch Auto-turn off and drag the fly a quarter turn. The error should stay small. Leave it in darkness for a minute and the decoded heading slowly drifts, as a real fly's does; turn the landmark on and it snaps back.</div>
+    </section>
 
-    <div class="card panel">
-      <h2>Topology <span id="topoInfo">Ripser · WebAssembly</span></h2>
-      <div class="row">
-        <button class="btn primary" id="btnTopo" type="button" disabled>Compute barcode</button>
-        <button class="btn" id="btnNull" type="button" disabled>Shuffle test (20×)</button>
+    <!-- 2 -->
+    <section class="ch" id="c2">
+      <div class="ch-h"><span class="n">2</span><h2>Wired from the connectome</h2><span class="zh">连接组</span></div>
+      <p>Nobody hand-designed this network. The <b>152 neurons</b> and their <b>129,473 synapses</b> come from the hemibrain, an electron-microscopy reconstruction of a female fly's brain. Each neuron's input is the sum of its partners' activity weighted by how many synapses connect them.</p>
+      <p>Only <b>49 numbers</b> were fitted, never the synapse counts: one gain for each pair of cell types, plus a bias and a time constant per type. With raw synapse counts and a single overall gain, no stable bump forms.</p>
+      <div class="card panel">
+        <h3>Connection matrix <span id="wInfo">152 × 152 · hemibrain</span></h3>
+        <canvas id="mat"></canvas>
+        <p class="cap">Rows receive, columns send, sorted by cell type and bridge glomerulus. <b style="color:#c8452c">Red</b> excites, <b style="color:#2f5fb0">blue</b> inhibits. The diagonal stripes are the ring: each wedge talks most to its neighbours. The matrix follows the circuit you pick on the left.</p>
       </div>
-      <canvas id="bars" height="190"></canvas>
-      <div class="verdict" id="verdict">Let the fly turn all the way round for ~20 s, then compute the barcode.</div>
-      <p class="cap">Vietoris–Rips persistent homology of 400 recorded states. Each bar is a loop (H<sub>1</sub>); its length is how long it lives. The dashed line is the longest loop found after shuffling each neuron's timing independently, which keeps every neuron's statistics but breaks their coordination.</p>
-    </div>
+    </section>
 
-    <div class="card panel">
-      <h2>The wiring <span id="wInfo">152 neurons · hemibrain</span></h2>
-      <canvas id="mat"></canvas>
-      <p class="cap">Signed connection weights in the current circuit (rows: receiving neuron, columns: sending neuron), sorted by cell type and bridge glomerulus. Red excites, blue inhibits. The diagonal bands are the ring.</p>
-    </div>
+    <!-- 3 -->
+    <section class="ch" id="c3">
+      <div class="ch-h"><span class="n">3</span><h2>The shape of activity</h2><span class="zh">状态空间</span></div>
+      <p>At each moment, the 46 E-PG firing rates are one point in a <b>46-dimensional</b> space. As the fly turns, that point moves. If the circuit really is a compass, the point can only go round: the cloud of all moments should form a <b>closed loop</b>, one point on the loop per heading.</p>
+      <div class="card panel">
+        <h3>State space <span id="recN">0 s recorded</span></h3>
+        <canvas id="pca" height="300"></canvas>
+        <div class="legend"><span><i style="background:linear-gradient(90deg,hsl(0,70%,50%),hsl(120,70%,50%),hsl(240,70%,50%),hsl(360,70%,50%))"></i>true heading 0°→360°</span><span>projected onto the top 2 principal components</span></div>
+      </div>
+      <p style="margin-top:12px">A loop in a picture is suggestive, but a projection can create or hide loops. Topology lets us ask the question in all 46 dimensions at once.</p>
+    </section>
 
-    <div class="card prose">
-      <h2>What you are looking at</h2>
-      <p><b>The anatomy is a ring.</b> About 46 E-PG neurons tile a doughnut-shaped brain region, the ellipsoid body, in 16 wedges. A single bump of activity sits on the ring and moves as the fly turns, even in darkness.</p>
-      <p><b>The wiring.</b> 152 neurons and their synapse counts come from the hemibrain connectome. P-EN neurons connect one wedge over, so when the fly turns they push the bump around; Δ7 neurons spread inhibition across the circuit.</p>
-      <p><b>What was fitted.</b> The synapse counts are never changed. Only 49 numbers were fitted, one per pair of cell types plus a bias and a time constant per type, so the bump tracks heading in the dark. With raw counts and a single global gain, no stable bump forms.</p>
-      <p><b>Is the activity a ring?</b> One long H<sub>1</sub> bar well above the shuffle line means the 46-dimensional activity traces out a loop: the network's state space has the same shape as its anatomy. Remove Δ7 or shuffle the wiring and the loop disappears.</p>
-      <p class="note">This is a simulation constrained by the connectome, not a recording from a fly. Neurotransmitter signs (E-PG, P-EN, P-EG excitatory; Δ7 inhibitory) are standard assumptions. A long H<sub>1</sub> bar shows a loop; it does not by itself prove a ring attractor.</p>
-      <h2>Sources</h2>
-      <ol class="refs">
-        <li>Seelig &amp; Jayaraman (2015). Neural dynamics for landmark orientation and angular path integration. <i>Nature</i> 521. <a href="https://doi.org/10.1038/nature14446">doi</a></li>
-        <li>Kim, Rouault, Druckmann &amp; Jayaraman (2017). Ring attractor dynamics in the <i>Drosophila</i> central brain. <i>Science</i> 356. <a href="https://doi.org/10.1126/science.aal4835">doi</a></li>
-        <li>Turner-Evans et al. (2017). Angular velocity integration in a fly heading circuit. <i>eLife</i> 6. <a href="https://doi.org/10.7554/eLife.23496">doi</a></li>
-        <li>Hulse et al. (2021). A connectome of the <i>Drosophila</i> central complex. <i>eLife</i> 10. <a href="https://doi.org/10.7554/eLife.66039">doi</a></li>
-        <li>Duan, Dong &amp; Fiete (2025). Connectome-constrained model of the fly head-direction circuit (bioRxiv). <a href="https://doi.org/10.1101/2025.05.26.655406">doi</a></li>
-        <li>Chaudhuri et al. (2019). The intrinsic attractor manifold and population dynamics of a canonical cognitive circuit. <i>Nat Neurosci</i> 22. <a href="https://doi.org/10.1038/s41593-019-0460-x">doi</a></li>
-        <li>Gardner et al. (2022). Toroidal topology of population activity in grid cells. <i>Nature</i> 602. <a href="https://doi.org/10.1038/s41586-021-04268-7">doi</a></li>
-        <li>Data: hemibrain v1.2.1 (Scheffer et al. 2020, <i>eLife</i>), CC-BY 4.0, via neuPrint. Persistent homology: Ripser (Bauer 2021), MIT licence, compiled to WebAssembly.</li>
-      </ol>
-    </div>
-  </aside>
+    <!-- 4 -->
+    <section class="ch" id="c4">
+      <div class="ch-h"><span class="n">4</span><h2>Birth and death of a loop</h2><span class="zh">生与死</span></div>
+      <p>Pick a distance <span class="m">ε</span>. Join every two recorded moments that are closer than <span class="m">ε</span>, and fill in every triangle whose three sides are all joined. Now grow <span class="m">ε</span> from zero. At first there are only scattered points. Then neighbours join into one ring, and a hole appears: a loop is <b>born</b>. Grow <span class="m">ε</span> further and edges start to cross the ring, the triangles fill the hole, and the loop <b>dies</b>.</p>
+      <p>Persistent homology records every loop's birth and death. Plot each loop as a point at <b>(birth, death)</b> and you get the <b>persistence diagram</b> found in the papers. Noise makes loops that die almost as soon as they are born, close to the diagonal. A real ring makes one point far above it.</p>
+
+      <div class="card panel">
+        <div class="row">
+          <button class="btn primary" id="btnTopo" type="button" disabled>Compute topology</button>
+          <button class="btn" id="btnNull" type="button" disabled>Shuffle test (20×)</button>
+          <button class="btn ghost" id="btnFF" type="button">Fast-forward 60 s</button>
+        </div>
+        <div class="verdict" id="verdict">Let the fly turn all the way round (or fast-forward), then compute.</div>
+      </div>
+
+      <div class="card panel">
+        <h3>Filtration <span id="topoInfo">Ripser · WebAssembly</span></h3>
+        <div class="lab-grid">
+          <div>
+            <canvas id="filt"></canvas>
+            <p class="cap" style="margin-top:4px">The 400 analysed moments, with a line between any two closer than <span class="m">ε</span> in the full 46-D space.</p>
+          </div>
+          <div>
+            <canvas id="dgm"></canvas>
+            <p class="cap" style="margin-top:4px">Persistence diagram. Each dot is a feature at <span class="m">(birth, death)</span>.</p>
+          </div>
+          <div class="wide">
+            <div class="scrub">
+              <button class="btn" id="play" type="button" disabled>▶ Play</button>
+              <input type="range" id="eps" min="0" max="1000" value="0" disabled aria-label="Scale epsilon">
+              <span class="eps"><i>ε</i> = <span id="epsV">0.00</span></span>
+            </div>
+            <div class="alive"><span class="a0"><b id="b0">–</b>pieces</span><span class="a1"><b id="b1">–</b>loops alive at this <span class="m">ε</span></span></div>
+          </div>
+          <div class="wide">
+            <canvas id="bars" height="210"></canvas>
+            <div class="tip" id="tip">Hover a dot or a bar to see its life; click to jump <span class="m">ε</span> into it.</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--h1)"></i>H₁: loops</span>
+          <span><i class="dot" style="background:var(--h0)"></i>H₀: connected pieces</span>
+          <span><i class="band"></i>shuffle band: no longer-lived than chance</span>
+          <span>shaded corner: alive at <span class="m">ε</span></span>
+        </div>
+      </div>
+      <p style="margin-top:12px"><b>How do we know a loop is not chance?</b> The shuffle test slides each neuron's time series by a random offset. Every neuron keeps its own firing statistics, but the coordination between neurons is destroyed. The longest loop any shuffle produces sets the grey band. A loop that rises above the band is real.</p>
+    </section>
+
+    <!-- 5 -->
+    <section class="ch" id="c5">
+      <div class="ch-h"><span class="n">5</span><h2>Break the circuit</h2><span class="zh">破坏</span></div>
+      <p>If the ring in the activity comes from the wiring, then breaking the wiring should break the ring. Each experiment below runs a fresh circuit for 60 s of a fly wandering in the dark, then computes the persistence diagram and a 20-shuffle test, exactly as above. All four diagrams share one scale.</p>
+      <div class="row"><button class="btn primary" id="btnExp" type="button">Run all four experiments</button><span class="cap" id="expInfo" style="margin:0">about 15 s on a laptop</span></div>
+      <div class="exps" id="exps"></div>
+      <div class="note" style="margin-top:14px"><b>Why Δ7 matters.</b> Δ7 neurons spread inhibition across the whole bridge. Without them, excitation runs away and every wedge saturates: the state collapses to a single point and the loop has nothing to go round. With the wiring shuffled within each pair of cell types, the cell-type totals are kept but the neighbour structure is lost, and so is the ring.</div>
+    </section>
+
+    <section class="ch" id="c6">
+      <div class="card prose">
+        <h3>What this shows, and what it doesn't</h3>
+        <p><b>The anatomy and the activity have the same shape.</b> A ring of neurons, wired as the connectome says with only cell-type-level tuning, produces activity whose 46-dimensional state space is a single persistent loop. Breaking the wiring removes the loop.</p>
+        <p>This is a <b>simulation constrained by the connectome</b>, not a recording from a fly. Neurotransmitter signs (E-PG, P-EN, P-EG excitatory; Δ7 inhibitory) are standard assumptions. A long H<sub>1</sub> bar shows that the states form a loop; it does not by itself prove a ring attractor, which also needs the bump to persist and move continuously. Real recordings of mouse head-direction cells show the same topology (Chaudhuri et al. 2019).</p>
+        <h3>Sources</h3>
+        <ol class="refs">
+          <li>Seelig &amp; Jayaraman (2015). Neural dynamics for landmark orientation and angular path integration. <i>Nature</i> 521. <a href="https://doi.org/10.1038/nature14446">doi</a></li>
+          <li>Kim, Rouault, Druckmann &amp; Jayaraman (2017). Ring attractor dynamics in the <i>Drosophila</i> central brain. <i>Science</i> 356. <a href="https://doi.org/10.1126/science.aal4835">doi</a></li>
+          <li>Turner-Evans et al. (2017). Angular velocity integration in a fly heading circuit. <i>eLife</i> 6. <a href="https://doi.org/10.7554/eLife.23496">doi</a></li>
+          <li>Hulse et al. (2021). A connectome of the <i>Drosophila</i> central complex. <i>eLife</i> 10. <a href="https://doi.org/10.7554/eLife.66039">doi</a></li>
+          <li>Duan, Dong &amp; Fiete (2025). Connectome-constrained model of the fly head-direction circuit (bioRxiv). <a href="https://doi.org/10.1101/2025.05.26.655406">doi</a></li>
+          <li>Chaudhuri et al. (2019). The intrinsic attractor manifold and population dynamics of a canonical cognitive circuit. <i>Nat Neurosci</i> 22. <a href="https://doi.org/10.1038/s41593-019-0460-x">doi</a></li>
+          <li>Gardner et al. (2022). Toroidal topology of population activity in grid cells. <i>Nature</i> 602. <a href="https://doi.org/10.1038/s41586-021-04268-7">doi</a></li>
+          <li>Data: hemibrain v1.2.1 (Scheffer et al. 2020, <i>eLife</i>), CC-BY 4.0, via neuPrint. Persistent homology: Ripser (Bauer 2021), MIT licence, compiled to WebAssembly.</li>
+        </ol>
+        <p>New to persistent homology? <a href="topology.html">Play with it on a few points you draw yourself →</a></p>
+      </div>
+    </section>
+  </div>
 </main>
+<footer><a href="play.html">← All projects</a> · <a href="index.html">Lindsey Ma</a></footer>
 
 <script type="module">
 import { Circuit } from "./compass/web/sim.js";
@@ -158,6 +294,7 @@ const $ = id => document.getElementById(id);
 const TAU = Math.PI * 2, deg = a => Math.round(((a % TAU) + TAU) % TAU * 180 / Math.PI);
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const hue = a => `hsl(${(((a % TAU) + TAU) % TAU) / TAU * 360},70%,50%)`;
+const INK = "#16181d", H0C = "#2563c9", H1C = "#d9472b";
 
 let model;
 try { model = await (await fetch("compass/web/model_hemibrain.json")).json(); }
@@ -173,114 +310,132 @@ const N = c.N, DT = model.dt;
 let heading = 0, vel = 0, auto = true, lights = false, ou = 0, cueSteps = 0, steps = 0;
 let drag = null, keyVel = 0;
 const buf = [], hbuf = [], MAXBUF = 1200, EVERY = 5;   // one sample every 50 ms, up to 60 s
-let topo = null, nullThr = null;
+let S = null;            // analysed snapshot: {X, H, P (2-D), edges (sorted), topo, thr}
+let eps = 0, hover = null, playing = false;
 
-function restart() { c.reset(); cueSteps = 50; buf.length = 0; hbuf.length = 0; topo = null; nullThr = null; drawBars(); verdict(); drawMatrix(); }
+function restart() { c.reset(); cueSteps = 50; buf.length = 0; hbuf.length = 0; S = null; setEpsUI(); drawLab(); verdict(); drawMatrix(); }
 $("cond").addEventListener("change", e => { c.setCondition(e.target.value); restart(); });
 $("reset").addEventListener("click", () => { heading = 0; restart(); });
 $("auto").addEventListener("click", e => { auto = !auto; e.currentTarget.classList.toggle("on", auto); e.currentTarget.setAttribute("aria-pressed", auto); });
-$("lights").addEventListener("click", e => { lights = !lights; const b = e.currentTarget; b.classList.toggle("on", lights); b.setAttribute("aria-pressed", lights); b.textContent = lights ? "Landmark: on (light)" : "Landmark: off (dark)"; });
-addEventListener("keydown", e => { if (e.key === "ArrowLeft") keyVel = -2.5; if (e.key === "ArrowRight") keyVel = 2.5; });
+$("lights").addEventListener("click", e => { lights = !lights; const b = e.currentTarget; b.classList.toggle("on", lights); b.setAttribute("aria-pressed", lights); b.textContent = lights ? "Landmark: on" : "Landmark: off"; });
+addEventListener("keydown", e => { if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return; if (e.key === "ArrowLeft") keyVel = -2.5; if (e.key === "ArrowRight") keyVel = 2.5; });
 addEventListener("keyup", e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") keyVel = 0; });
 
 /* ---------------- ring canvas: drag to turn ---------------- */
 const ring = $("ring"), rctx = ring.getContext("2d");
 const pointerAngle = e => { const r = ring.getBoundingClientRect(); return Math.atan2(e.clientY - r.top - r.height / 2, e.clientX - r.left - r.width / 2) + Math.PI / 2; };
-ring.addEventListener("pointerdown", e => { drag = { a: pointerAngle(e), t: performance.now() }; ring.setPointerCapture(e.pointerId); ring.classList.add("drag"); });
+ring.addEventListener("pointerdown", e => { drag = { a: pointerAngle(e) }; ring.setPointerCapture(e.pointerId); ring.classList.add("drag"); });
 ring.addEventListener("pointermove", e => { if (!drag) return; const a = pointerAngle(e); drag.pending = (drag.pending || 0) + wrap(a - drag.a); drag.a = a; });
 const endDrag = () => { drag = null; ring.classList.remove("drag"); };
 ring.addEventListener("pointerup", endDrag); ring.addEventListener("pointercancel", endDrag);
 
-/* ---------------- simulation loop ---------------- */
+/* ---------------- simulation ---------------- */
+function gaussFrom(rand) { return () => { let u = 0, v = 0; while (!u) u = rand(); while (!v) v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); }; }
+const gauss = gaussFrom(Math.random);
+function stepOnce(v) {
+  heading += v * DT;
+  const cue = cueSteps > 0 || lights ? heading : null;
+  c.step(cueSteps > 0 ? 0 : v, cue, cueSteps > 0 ? model.cueGain : 1.0);
+  if (cueSteps > 0) cueSteps--;
+  if (++steps % EVERY === 0 && cueSteps === 0) { buf.push(Array.from(c.epgState())); hbuf.push(heading); if (buf.length > MAXBUF) { buf.shift(); hbuf.shift(); } }
+}
+const ouStep = () => { ou += DT * (-ou / .3) + Math.sqrt(2 * DT / .3) * 1.5 * gauss(); return ou; };
+
 let last = performance.now(), acc = 0;
 function tick(now) {
   acc += Math.min(.1, (now - last) / 1000); last = now;
-  // angular velocity source for this frame
   let frameVel;
   if (drag) { frameVel = Math.max(-12, Math.min(12, (drag.pending || 0) / Math.max(acc, DT))); drag.pending = 0; }
   else if (keyVel) frameVel = keyVel;
-  else if (auto) frameVel = null;   // OU per step
+  else if (auto) frameVel = null;
   else frameVel = 0;
-  while (acc >= DT) {
-    acc -= DT;
-    if (frameVel === null) { ou += DT * (-ou / .3) + Math.sqrt(2 * DT / .3) * 1.5 * gauss(); vel = ou; } else vel = frameVel;
-    heading += vel * DT;
-    const cue = cueSteps > 0 ? heading : (lights ? heading : null);
-    c.step(cueSteps > 0 ? 0 : vel, cue, cueSteps > 0 ? model.cueGain : 1.0);
-    if (cueSteps > 0) cueSteps--;
-    if (++steps % EVERY === 0 && cueSteps === 0) { buf.push(Array.from(c.epgState())); hbuf.push(heading); if (buf.length > MAXBUF) { buf.shift(); hbuf.shift(); } }
-  }
+  while (acc >= DT) { acc -= DT; vel = frameVel === null ? ouStep() : frameVel; stepOnce(vel); }
   draw();
   requestAnimationFrame(tick);
 }
-function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); }
+$("btnFF").addEventListener("click", () => { for (let k = 0; k < 6000; k++) stepOnce(ouStep()); pcs = null; });
 
-/* ---------------- drawing ---------------- */
+/* ---------------- canvas helpers ---------------- */
 let DPR = 1;
-function fit(cv, h) { DPR = Math.min(2, devicePixelRatio || 1); const w = cv.getBoundingClientRect().width; const hh = h ?? cv.getBoundingClientRect().height; cv.width = Math.round(w * DPR); cv.height = Math.round(hh * DPR); if (h) cv.style.height = h + "px"; }
-function sizeAll() { fit(ring); fit($("pb")); fit($("pca"), 300); fit($("bars"), 190); const mw = $("mat").getBoundingClientRect().width; fit($("mat"), Math.min(mw, 360)); drawMatrix(); drawBars(); }
+function fit(cv, h) { DPR = Math.min(2, devicePixelRatio || 1); const r = cv.getBoundingClientRect(); const w = r.width; const hh = h ?? r.height; cv.width = Math.round(w * DPR); cv.height = Math.round(hh * DPR); if (h) cv.style.height = h + "px"; }
+function ctx(cv) { const g = cv.getContext("2d"); g.setTransform(DPR, 0, 0, DPR, 0, 0); const w = cv.width / DPR, h = cv.height / DPR; g.clearRect(0, 0, w, h); return { g, w, h }; }
+function sizeAll() {
+  fit(ring); fit($("pb")); fit($("pca"), 300); fit($("bars"), 210); fit($("filt")); fit($("dgm"));
+  const mw = $("mat").getBoundingClientRect().width; fit($("mat"), Math.min(mw, 420));
+  document.querySelectorAll(".exp canvas").forEach(cv => fit(cv));
+  drawMatrix(); drawLab(); drawExps();
+}
 addEventListener("resize", sizeAll);
 
-// EPG wedges: 16 positions, angle k * 2pi / 16
+/* ---------------- live views ---------------- */
 const wedgeOf = model.neurons.map(x => x.angle === null ? -1 : Math.round(x.angle / (TAU / 16)) % 16);
 function draw() {
   const d = c.decode();
-  // ring
-  const W = ring.width, H = ring.height, cx = W / 2, cy = H / 2, R = Math.min(W, H) * .34, w = R * .26;
+  const W = ring.width, H = ring.height, cx = W / 2, cy = H / 2, R = Math.min(W, H) * .33, w = R * .27;
   const g = rctx; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
   const act = new Float32Array(16), cnt = new Float32Array(16);
   wedgeOf.forEach((k, i) => { if (k >= 0) { act[k] += c.r[i]; cnt[k]++; } });
   for (let k = 0; k < 16; k++) {
     const a = cnt[k] ? act[k] / cnt[k] : 0;
     const a0 = k * TAU / 16 - TAU / 32 - Math.PI / 2, a1 = a0 + TAU / 16;
-    g.beginPath(); g.arc(cx, cy, R + w / 2, a0 + .01, a1 - .01); g.arc(cx, cy, R - w / 2, a1 - .01, a0 + .01, true); g.closePath();
+    g.beginPath(); g.arc(cx, cy, R + w / 2, a0 + .012, a1 - .012); g.arc(cx, cy, R - w / 2, a1 - .012, a0 + .012, true); g.closePath();
+    g.fillStyle = "#fff"; g.fill();
     g.fillStyle = `rgba(224,87,47,${Math.min(1, a * 1.15).toFixed(3)})`; g.fill();
-    g.strokeStyle = "rgba(22,24,29,.18)"; g.lineWidth = 1 * DPR; g.stroke();
+    g.strokeStyle = "rgba(22,24,29,.16)"; g.lineWidth = DPR; g.stroke();
   }
-  // decoded heading marker (outside the ring)
-  const ad = d.angle - Math.PI / 2;
-  g.fillStyle = "#2563c9"; g.beginPath();
-  const ro = R + w / 2 + 8 * DPR;
+  // compass ticks
+  g.fillStyle = "rgba(22,24,29,.4)"; g.font = `${10 * DPR}px Inter, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+  [["0°", 0], ["90°", Math.PI / 2], ["180°", Math.PI], ["270°", 3 * Math.PI / 2]].forEach(([t, a]) => { const rr = R + w / 2 + 30 * DPR; g.fillText(t, cx + Math.sin(a) * rr, cy - Math.cos(a) * rr); });
+  // decoded heading arrow (outside the ring)
+  const ad = d.angle - Math.PI / 2, ro = R + w / 2 + 6 * DPR;
+  g.fillStyle = H0C; g.beginPath();
   g.moveTo(cx + Math.cos(ad) * ro, cy + Math.sin(ad) * ro);
-  g.lineTo(cx + Math.cos(ad - .08) * (ro + 16 * DPR), cy + Math.sin(ad - .08) * (ro + 16 * DPR));
-  g.lineTo(cx + Math.cos(ad + .08) * (ro + 16 * DPR), cy + Math.sin(ad + .08) * (ro + 16 * DPR)); g.closePath(); g.fill();
+  g.lineTo(cx + Math.cos(ad - .09) * (ro + 17 * DPR), cy + Math.sin(ad - .09) * (ro + 17 * DPR));
+  g.lineTo(cx + Math.cos(ad + .09) * (ro + 17 * DPR), cy + Math.sin(ad + .09) * (ro + 17 * DPR)); g.closePath(); g.fill();
   // the fly, facing its true heading
-  g.save(); g.translate(cx, cy); g.rotate(heading); drawFly(g, R * .42); g.restore();
-  g.strokeStyle = "rgba(22,24,29,.35)"; g.setLineDash([4 * DPR, 4 * DPR]); g.lineWidth = 1 * DPR;
+  g.strokeStyle = "rgba(22,24,29,.3)"; g.setLineDash([4 * DPR, 4 * DPR]); g.lineWidth = DPR;
   g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(heading - Math.PI / 2) * (R - w / 2), cy + Math.sin(heading - Math.PI / 2) * (R - w / 2)); g.stroke(); g.setLineDash([]);
-  g.fillStyle = "rgba(22,24,29,.55)"; g.font = `${11 * DPR}px Inter, sans-serif`; g.textAlign = "center";
-  g.fillText(lights ? "landmark visible" : "darkness: path integration", cx, cy + R * .62);
-  // readouts
+  g.save(); g.translate(cx, cy); g.rotate(heading); drawFly(g, R * .46); g.restore();
+  g.fillStyle = "rgba(22,24,29,.5)"; g.font = `${11 * DPR}px Inter, sans-serif`; g.textAlign = "center";
+  g.fillText(lights ? "landmark visible" : "darkness · path integration", cx, cy + R * .66);
   $("rTrue").textContent = deg(heading) + "°"; $("rDec").textContent = deg(d.angle) + "°";
   $("rErr").textContent = Math.round(Math.abs(wrap(d.angle - heading)) * 180 / Math.PI) + "°"; $("rBump").textContent = d.contrast.toFixed(2);
   $("recN").textContent = `${(buf.length * EVERY * DT).toFixed(0)} s recorded`;
-  $("btnTopo").disabled = buf.length < 200; $("btnNull").disabled = !topo;
+  $("btnTopo").disabled = buf.length < 200 || busy;
   drawPB(); if (steps % 6 < 2) drawPCA();
 }
 function drawFly(g, s) {
-  g.fillStyle = "#16181d";
-  g.beginPath(); g.ellipse(0, s * .15, s * .18, s * .42, 0, 0, TAU); g.fill();           // abdomen
-  g.beginPath(); g.ellipse(0, -s * .28, s * .16, s * .16, 0, 0, TAU); g.fill();          // thorax
-  g.beginPath(); g.ellipse(0, -s * .5, s * .11, s * .1, 0, 0, TAU); g.fill();            // head
-  g.fillStyle = "rgba(37,99,201,.18)"; g.strokeStyle = "rgba(22,24,29,.35)"; g.lineWidth = 1;
-  for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(sd * s * .26, s * .05, s * .14, s * .4, sd * .35, 0, TAU); g.fill(); g.stroke(); }
+  // wings
+  g.fillStyle = "rgba(37,99,201,.12)"; g.strokeStyle = "rgba(22,24,29,.35)"; g.lineWidth = DPR;
+  for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(sd * s * .2, s * .12, s * .13, s * .38, sd * .28, 0, TAU); g.fill(); g.stroke(); }
+  // legs
+  g.strokeStyle = "rgba(22,24,29,.55)"; g.lineWidth = 1.2 * DPR;
+  for (const sd of [-1, 1]) for (const [y0, dx, dy] of [[-.32, .3, -.2], [-.26, .34, .02], [-.2, .3, .22]]) {
+    g.beginPath(); g.moveTo(sd * s * .08, s * y0); g.lineTo(sd * s * dx, s * (y0 + dy)); g.stroke();
+  }
+  g.fillStyle = INK;
+  g.beginPath(); g.ellipse(0, s * .12, s * .13, s * .3, 0, 0, TAU); g.fill();       // abdomen
+  g.beginPath(); g.ellipse(0, -s * .26, s * .13, s * .14, 0, 0, TAU); g.fill();     // thorax
+  g.beginPath(); g.ellipse(0, -s * .46, s * .1, s * .08, 0, 0, TAU); g.fill();      // head
+  g.fillStyle = "#b8412a";
+  for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(sd * s * .075, -s * .47, s * .045, s * .055, 0, 0, TAU); g.fill(); }  // eyes
 }
 
-// protocerebral bridge: glomeruli L9..L1 R1..R9, one row per cell type
 const GLOMS = [...Array.from({ length: 9 }, (_, i) => "L" + (9 - i)), ...Array.from({ length: 9 }, (_, i) => "R" + (i + 1))];
 const ROWS = ["EPG", "PEN1", "PEN2", "PEG", "D7"];
 function drawPB() {
-  const cv = $("pb"), g = cv.getContext("2d"), W = cv.width, H = cv.height, L = 44 * DPR;
-  g.clearRect(0, 0, W, H);
+  const cv = $("pb"), g = cv.getContext("2d"), W = cv.width, H = cv.height, L = 40 * DPR;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
   const cw = (W - L) / 18, rh = (H - 14 * DPR) / ROWS.length;
   const s = Array.from(ROWS, () => new Float32Array(18)), n = Array.from(ROWS, () => new Float32Array(18));
   model.neurons.forEach((x, i) => { const r = ROWS.indexOf(x.type), k = GLOMS.indexOf(x.glom); if (r >= 0 && k >= 0) { s[r][k] += c.r[i]; n[r][k]++; } });
   g.font = `${10 * DPR}px Inter, sans-serif`; g.textBaseline = "middle";
   ROWS.forEach((name, r) => {
-    g.fillStyle = "rgba(22,24,29,.6)"; g.textAlign = "left"; g.fillText(name === "D7" ? "Δ7" : name, 0, r * rh + rh / 2);
+    g.fillStyle = "rgba(22,24,29,.6)"; g.textAlign = "left"; g.fillText(name === "D7" ? "Δ7" : name.replace("PEN", "P-EN").replace("EPG", "E-PG").replace("PEG", "P-EG"), 0, r * rh + rh / 2);
     for (let k = 0; k < 18; k++) {
       if (!n[r][k]) continue;
       const v = s[r][k] / n[r][k];
+      g.fillStyle = "rgba(22,24,29,.04)"; g.fillRect(L + k * cw + 1, r * rh + 1, cw - 2, rh - 2);
       g.fillStyle = name === "D7" ? `rgba(37,99,201,${v.toFixed(3)})` : `rgba(224,87,47,${v.toFixed(3)})`;
       g.fillRect(L + k * cw + 1, r * rh + 1, cw - 2, rh - 2);
     }
@@ -289,10 +444,9 @@ function drawPB() {
   g.fillText("protocerebral bridge · left ← → right", L + (W - L) / 2, H - 6 * DPR);
 }
 
-// PCA of the recorded buffer: covariance + power iteration for 2 components
-let pcs = null;
-function computePCs() {
-  const X = buf, n = X.length, d = X[0].length; if (n < 20) return null;
+// PCA: covariance + power iteration for 2 components
+function computePCs(X) {
+  const n = X.length, d = X[0].length; if (n < 20) return null;
   const mu = new Float64Array(d); X.forEach(x => x.forEach((v, j) => mu[j] += v / n));
   const C = Array.from({ length: d }, () => new Float64Array(d));
   for (const x of X) for (let i = 0; i < d; i++) { const a = x[i] - mu[i]; for (let j = i; j < d; j++) C[i][j] += a * (x[j] - mu[j]); }
@@ -309,78 +463,287 @@ function computePCs() {
   }
   return { mu, comps };
 }
+const project = (X, pc) => X.map(x => pc.comps.map(u => { let s = 0; for (let j = 0; j < x.length; j++) s += (x[j] - pc.mu[j]) * u[j]; return s; }));
+function scaler(P, w, h, pad = .44) { let m = 1e-6; P.forEach(([a, b]) => { m = Math.max(m, Math.abs(a), Math.abs(b)); }); const sc = Math.min(w, h) * pad / m; return ([a, b]) => [w / 2 + a * sc, h / 2 - b * sc]; }
+
+let pcs = null;
 function drawPCA() {
-  const cv = $("pca"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
-  g.clearRect(0, 0, W, H);
-  if (buf.length < 20) { g.fillStyle = "rgba(22,24,29,.45)"; g.font = `${13 * DPR}px Inter, sans-serif`; g.textAlign = "center"; g.fillText("recording…", W / 2, H / 2); return; }
-  if (!pcs || steps % 60 < 6) pcs = computePCs();
-  const P = buf.map(x => pcs.comps.map(u => { let s = 0; for (let j = 0; j < x.length; j++) s += (x[j] - pcs.mu[j]) * u[j]; return s; }));
-  let m = 1e-6; P.forEach(([a, b]) => { m = Math.max(m, Math.abs(a), Math.abs(b)); });
-  const sc = Math.min(W, H) * .44 / m, cx = W / 2, cy = H / 2;
-  P.forEach(([a, b], i) => { g.fillStyle = hue(hbuf[i]); g.globalAlpha = .75; g.beginPath(); g.arc(cx + a * sc, cy - b * sc, 2.2 * DPR, 0, TAU); g.fill(); });
+  const { g, w, h } = ctx($("pca"));
+  if (buf.length < 20) { g.fillStyle = "rgba(22,24,29,.45)"; g.font = "13px Inter, sans-serif"; g.textAlign = "center"; g.fillText("recording…", w / 2, h / 2); return; }
+  if (!pcs || steps % 60 < 6) pcs = computePCs(buf);
+  const P = project(buf, pcs), xy = scaler(P, w, h);
+  P.forEach((p, i) => { const [x, y] = xy(p); g.fillStyle = hue(hbuf[i]); g.globalAlpha = .75; g.beginPath(); g.arc(x, y, 2.2, 0, TAU); g.fill(); });
   g.globalAlpha = 1;
-  const [a, b] = P[P.length - 1]; g.strokeStyle = "#16181d"; g.lineWidth = 1.5 * DPR; g.beginPath(); g.arc(cx + a * sc, cy - b * sc, 6 * DPR, 0, TAU); g.stroke();
-  g.fillStyle = "rgba(22,24,29,.45)"; g.font = `${11 * DPR}px Inter, sans-serif`; g.textAlign = "left"; g.fillText("PC1 →", 8 * DPR, H - 8 * DPR);
+  const [x, y] = xy(P[P.length - 1]); g.strokeStyle = INK; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, 6, 0, TAU); g.stroke();
+  g.fillStyle = "rgba(22,24,29,.45)"; g.font = "11px Inter, sans-serif"; g.textAlign = "left"; g.fillText("PC1 →", 8, h - 8);
+  g.save(); g.translate(14, h - 46); g.rotate(-Math.PI / 2); g.fillText("PC2 →", 0, 0); g.restore();
 }
 
-// connectivity matrix of the current circuit
 function drawMatrix() {
   const cv = $("mat"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
   const img = g.createImageData(N, N);
   let mx = 0; for (const v of c.W) mx = Math.max(mx, Math.abs(v));
   for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
-    const v = c.W[i * N + j], t = Math.min(1, Math.log1p(Math.abs(v) / mx * 50) / Math.log(51)), o = (i * N + j) * 4;
+    const v = c.W[i * N + j], t = mx ? Math.min(1, Math.log1p(Math.abs(v) / mx * 50) / Math.log(51)) : 0, o = (i * N + j) * 4;
     if (v > 0) { img.data[o] = 255; img.data[o + 1] = 255 - 180 * t; img.data[o + 2] = 255 - 200 * t; }
     else if (v < 0) { img.data[o] = 255 - 220 * t; img.data[o + 1] = 255 - 150 * t; img.data[o + 2] = 255 - 40 * t; }
     else { img.data[o] = img.data[o + 1] = img.data[o + 2] = 252; }
     img.data[o + 3] = 255;
   }
   const off = document.createElement("canvas"); off.width = N; off.height = N; off.getContext("2d").putImageData(img, 0, 0);
-  g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H);
-  const s = Math.min(W, H); g.drawImage(off, (W - s) / 2, 0, s, s);
+  g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; g.clearRect(0, 0, W, H);
+  const L = 34 * DPR, s = Math.min(W - L, H - L), x0 = L + (W - L - s) / 2;
+  g.drawImage(off, x0, 0, s, s);
+  // cell-type block labels
+  const types = model.neurons.map(x => x.type), blocks = [];
+  types.forEach((t, i) => { if (!blocks.length || blocks.at(-1).t !== t) blocks.push({ t, a: i, b: i + 1 }); else blocks.at(-1).b = i + 1; });
+  const merged = []; blocks.forEach(b => { const name = b.t === "EPGt" ? "EPG" : b.t; if (merged.length && merged.at(-1).name === name) merged.at(-1).b = b.b; else merged.push({ name, a: b.a, b: b.b }); });
+  g.font = `${9.5 * DPR}px Inter, sans-serif`; g.fillStyle = "rgba(22,24,29,.55)"; g.strokeStyle = "rgba(22,24,29,.25)"; g.lineWidth = DPR;
+  const lab = n => n === "D7" ? "Δ7" : n.replace("PEN", "P-EN").replace("EPG", "E-PG").replace("PEG", "P-EG");
+  merged.forEach(({ name, a, b }) => {
+    const ya = a / N * s, yb = b / N * s, xa = x0 + ya, xb = x0 + yb;
+    g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(lab(name), L - 4 * DPR, (ya + yb) / 2);
+    g.textAlign = "center"; g.textBaseline = "top"; g.fillText(lab(name), (xa + xb) / 2, s + 4 * DPR);
+    if (a) { g.beginPath(); g.moveTo(x0, ya); g.lineTo(x0 + s, ya); g.moveTo(xa, 0); g.lineTo(xa, s); g.stroke(); }
+  });
 }
 
 /* ---------------- topology ---------------- */
 const worker = new Worker(new URL("./compass/web/topo-worker.js", import.meta.url), { type: "module" });
-let jobId = 0;
-worker.onmessage = ({ data }) => {
-  if (data.kind === "barcode") { topo = data; nullThr = null; $("topoInfo").textContent = `${data.points} points · ${data.ms.toFixed(0)} ms`; drawBars(); verdict(); $("btnTopo").textContent = "Compute barcode"; }
-  if (data.kind === "progress") { $("btnNull").textContent = `Shuffling… ${data.done}/${data.total}`; }
-  if (data.kind === "null") { nullThr = data.threshold; drawBars(); verdict(); $("btnNull").textContent = "Shuffle test (20×)"; }
-  if (data.kind === "error") { $("verdict").textContent = "Topology failed: " + data.message; }
-};
-let snapshot = null;
-$("btnTopo").addEventListener("click", () => { snapshot = buf.map(x => x.slice()); $("btnTopo").textContent = "Computing…"; worker.postMessage({ id: ++jobId, kind: "barcode", X: snapshot, n: 400 }); });
-$("btnNull").addEventListener("click", () => { if (!snapshot) return; worker.postMessage({ id: ++jobId, kind: "null", X: snapshot, n: 400, shuffles: 20 }); });
+let jobId = 0, busy = false;
+const pending = new Map();
+worker.onmessage = ({ data }) => { const h = pending.get(data.id); if (h) h(data); };
+const job = (msg, onProgress) => new Promise((res, rej) => {
+  const id = ++jobId;
+  pending.set(id, d => { if (d.kind === "progress") onProgress?.(d); else { pending.delete(id); d.kind === "error" ? rej(new Error(d.message)) : res(d); } });
+  worker.postMessage({ ...msg, id });
+});
+function subsample(A, n) { if (A.length <= n) return A.slice(); const out = []; for (let k = 0; k < n; k++) out.push(A[Math.round(k * (A.length - 1) / (n - 1))]); return out; }
+const finite = dg => dg.filter(([, d]) => Number.isFinite(d));
+const lifetimes = dg => finite(dg).map(([b, d]) => d - b).sort((a, b) => b - a);
 
-const life = dg => dg.filter(([b, d]) => Number.isFinite(d)).map(([b, d]) => d - b).sort((a, b) => b - a);
-function drawBars() {
-  const cv = $("bars"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
-  g.setTransform(DPR, 0, 0, DPR, 0, 0); const w = W / DPR, h = H / DPR; g.clearRect(0, 0, w, h);
-  if (!topo) { g.fillStyle = "rgba(22,24,29,.35)"; g.font = "13px Inter, sans-serif"; g.textAlign = "center"; g.fillText("no barcode yet", w / 2, h / 2); return; }
-  const L = life(topo.h1).slice(0, 12), top = 8, axis = h - 22, L0 = 26;
-  const xmax = Math.max(L[0] || 1e-3, nullThr || 0) * 1.08, x = v => L0 + v / xmax * (w - L0 - 10);
-  const rh = Math.min(13, (axis - top) / Math.max(1, L.length));
-  g.fillStyle = "#d9472b"; g.font = "600 11px Inter, sans-serif"; g.fillText("H₁", 2, top + 10);
-  L.forEach((v, i) => { const sig = nullThr !== null && v > nullThr; g.globalAlpha = nullThr === null || sig ? 1 : .35; g.fillRect(x(0), top + i * rh, x(v) - x(0), Math.max(2, rh * .65)); });
-  g.globalAlpha = 1;
-  g.strokeStyle = "rgba(22,24,29,.3)"; g.beginPath(); g.moveTo(L0, axis + .5); g.lineTo(w - 10, axis + .5); g.stroke();
-  g.fillStyle = "rgba(22,24,29,.5)"; g.font = "11px Inter, sans-serif"; g.textAlign = "center"; g.fillText("lifetime (death − birth)", (L0 + w) / 2, h - 4);
-  if (nullThr !== null) { g.strokeStyle = "#16181d"; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(x(nullThr), top - 4); g.lineTo(x(nullThr), axis); g.stroke(); g.setLineDash([]); }
+$("btnTopo").addEventListener("click", async () => {
+  busy = true; $("btnTopo").textContent = "Computing…";
+  const full = buf.map(x => x.slice()), X = subsample(full, 400), H = subsample(hbuf, 400);
+  try {
+    const r = await job({ kind: "barcode", X, n: 400 });
+    const pc = computePCs(X), P = project(X, pc);
+    // all pairwise distances in the full 46-D space, sorted, so the filtration at ε is a prefix
+    const n = X.length, d = X[0].length, E = [];
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { let s = 0; for (let k = 0; k < d; k++) { const t = X[i][k] - X[j][k]; s += t * t; } E.push([Math.sqrt(s), i, j]); }
+    E.sort((a, b) => a[0] - b[0]);
+    S = { full, X, H, P, E, topo: r, thr: null };
+    const fd = [...finite(r.h0), ...finite(r.h1)].map(([, dd]) => dd);
+    S.max = Math.max(...fd, 1e-3) * 1.12;
+    $("topoInfo").textContent = `${r.points} states · ${r.ms.toFixed(0)} ms`;
+    const h1 = [...r.h1].sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0];
+    eps = h1 ? (h1[0] + h1[1]) / 2 : S.max / 3;
+    setEpsUI(); drawLab(); verdict();
+  } catch (e) { $("verdict").textContent = "Topology failed: " + e.message; }
+  busy = false; $("btnTopo").textContent = "Compute topology";
+});
+$("btnNull").addEventListener("click", async () => {
+  if (!S) return; const mine = S; $("btnNull").disabled = true;
+  try {
+    const r = await job({ kind: "null", X: mine.full, n: 400, shuffles: 20 }, p => { $("btnNull").textContent = `Shuffling… ${p.done}/${p.total}`; });
+    mine.thr = r.threshold; if (S === mine) { drawLab(); verdict(); }
+  } catch (e) { $("verdict").textContent = "Shuffle test failed: " + e.message; }
+  $("btnNull").textContent = "Shuffle test (20×)"; $("btnNull").disabled = !S;
+});
+
+/* ε slider and play */
+function setEpsUI() {
+  const on = !!S; $("eps").disabled = !on; $("play").disabled = !on; $("btnNull").disabled = !on;
+  if (!on) { $("epsV").textContent = "–"; $("b0").textContent = "–"; $("b1").textContent = "–"; return; }
+  $("eps").value = Math.round(eps / S.max * 1000);
+  $("epsV").textContent = eps.toFixed(2);
+  const alive = dg => dg.filter(([b, d]) => b <= eps && eps < d).length;
+  $("b0").textContent = alive(S.topo.h0); $("b1").textContent = alive(S.topo.h1);
 }
+$("eps").addEventListener("input", e => { if (!S) return; playing = false; $("play").textContent = "▶ Play"; eps = e.target.value / 1000 * S.max; setEpsUI(); drawLab(); });
+$("play").addEventListener("click", () => {
+  if (!S) return; playing = !playing; $("play").textContent = playing ? "❚❚ Pause" : "▶ Play";
+  if (playing && eps >= S.max * .98) eps = 0;
+  let t0 = performance.now(), e0 = eps;
+  const loop = now => { if (!playing || !S) return; eps = Math.min(S.max, e0 + (now - t0) / 8000 * S.max); setEpsUI(); drawLab(); if (eps >= S.max) { playing = false; $("play").textContent = "▶ Play"; return; } requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+});
+
+/* the three linked views */
+function drawLab() { drawFilt(); drawDgm($("dgm"), S && S.topo, S && S.thr, S ? S.max : 1, { eps: S ? eps : null, hover, main: true }); drawBars(); }
+
+function drawFilt() {
+  const { g, w, h } = ctx($("filt"));
+  g.strokeStyle = "rgba(22,24,29,.1)"; g.strokeRect(.5, .5, w - 1, h - 1);
+  if (!S) { g.fillStyle = "rgba(22,24,29,.4)"; g.font = "13px Inter, sans-serif"; g.textAlign = "center"; g.fillText("compute topology first", w / 2, h / 2); return; }
+  const xy = scaler(S.P, w, h, .42), Q = S.P.map(xy);
+  // edges with length ≤ ε (prefix of the sorted list)
+  let k = 0; while (k < S.E.length && S.E[k][0] <= eps) k++;
+  g.strokeStyle = `rgba(22,24,29,${Math.max(.02, Math.min(.35, 60 / Math.max(1, k))).toFixed(3)})`; g.lineWidth = .8;
+  g.beginPath(); for (let m = 0; m < k; m++) { const [, i, j] = S.E[m]; g.moveTo(Q[i][0], Q[i][1]); g.lineTo(Q[j][0], Q[j][1]); } g.stroke();
+  Q.forEach(([x, y], i) => { g.fillStyle = hue(S.H[i]); g.beginPath(); g.arc(x, y, 2.3, 0, TAU); g.fill(); });
+  g.fillStyle = "rgba(22,24,29,.55)"; g.font = "11px Inter, sans-serif"; g.textAlign = "left";
+  g.fillText(`${k.toLocaleString()} edges`, 8, 16);
+}
+
+// persistence diagram: x = birth, y = death; shared by the main lab and the experiment cards
+function drawDgm(cv, topo, thr, max, { eps = null, hover = null, main = false, hits = null } = {}) {
+  const { g, w, h } = ctx(cv);
+  const L = main ? 34 : 26, B = main ? 30 : 22, T = 12, Rp = 10, pw = w - L - Rp, ph = h - B - T;
+  const X = v => L + v / max * pw, Y = v => T + ph - v / max * ph, yInf = T - 2;
+  g.fillStyle = "#fff"; g.fillRect(L, T, pw, ph);
+  // shuffle band: death − birth ≤ thr
+  if (thr) { g.fillStyle = "rgba(22,24,29,.09)"; g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(max), Y(max)); g.lineTo(X(max - Math.min(thr, max)), Y(max)); g.lineTo(X(0), Y(Math.min(thr, max))); g.closePath(); g.fill(); }
+  // alive-at-ε corner: birth ≤ ε < death
+  if (eps !== null) {
+    g.fillStyle = "rgba(217,71,43,.07)"; g.fillRect(X(0), T, X(eps) - X(0), Y(eps) - T);
+    g.strokeStyle = "rgba(22,24,29,.45)"; g.setLineDash([4, 3]); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(X(eps), T + ph); g.lineTo(X(eps), Y(eps)); g.lineTo(X(0), Y(eps)); g.stroke(); g.setLineDash([]);
+  }
+  // diagonal + axes
+  g.strokeStyle = "rgba(22,24,29,.35)"; g.lineWidth = 1; g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(max), Y(max)); g.stroke();
+  g.strokeStyle = "rgba(22,24,29,.5)"; g.beginPath(); g.moveTo(L, T); g.lineTo(L, T + ph); g.lineTo(L + pw, T + ph); g.stroke();
+  g.fillStyle = "rgba(22,24,29,.55)"; g.font = `${main ? 11 : 10}px Inter, sans-serif`;
+  g.textAlign = "center"; g.fillText("birth →", L + pw / 2, h - (main ? 6 : 4));
+  g.save(); g.translate(main ? 11 : 9, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText("death →", 0, 0); g.restore();
+  if (main) {
+    g.font = "10px Inter, sans-serif"; g.fillStyle = "rgba(22,24,29,.45)";
+    const step = niceStep(max);
+    for (let v = 0; v <= max; v += step) { g.textAlign = "center"; g.fillText(v.toFixed(step < 1 ? 1 : 0), X(v), T + ph + 12); g.textAlign = "right"; g.fillText(v.toFixed(step < 1 ? 1 : 0), L - 4, Y(v) + 3); }
+    g.textAlign = "left"; g.fillText("diagonal: born = dies", X(max * .52), Y(max * .52) + 16);
+  }
+  if (!topo) { g.fillStyle = "rgba(22,24,29,.35)"; g.font = "12px Inter, sans-serif"; g.textAlign = "center"; g.fillText(main ? "no diagram yet" : "", L + pw / 2, T + ph / 2); return; }
+  const pt = (b, d, col, r, dim, idx) => {
+    const x = X(b), y = Number.isFinite(d) ? Y(Math.min(d, max)) : yInf, isH = hover && hover.dim === dim && hover.idx === idx;
+    const sig = dim === 1 && thr && (d - b) > thr;
+    g.globalAlpha = dim === 0 ? .55 : (thr && !sig ? .45 : 1);
+    g.fillStyle = col; g.beginPath(); g.arc(x, y, isH ? r + 3 : r, 0, TAU); g.fill();
+    if (isH || sig) { g.globalAlpha = 1; g.strokeStyle = INK; g.lineWidth = isH ? 2 : 1.2; g.beginPath(); g.arc(x, y, (isH ? r + 3 : r) + 2, 0, TAU); g.stroke(); }
+    g.globalAlpha = 1;
+    hits?.push({ x, y, dim, idx, b, d });
+  };
+  topo.h0.forEach(([b, d], i) => pt(b, d, H0C, main ? 3 : 2.2, 0, i));
+  topo.h1.forEach(([b, d], i) => pt(b, d, H1C, main ? 4.5 : 3.4, 1, i));
+  if (topo.h0.some(([, d]) => !Number.isFinite(d))) { g.fillStyle = "rgba(22,24,29,.45)"; g.font = "10px Inter, sans-serif"; g.textAlign = "left"; g.fillText("∞", X(0) + 8, yInf + 4); }
+}
+function niceStep(max) { const r = max / 4, p = 10 ** Math.floor(Math.log10(r)); return [1, 2, 5, 10].map(m => m * p).find(s => s >= r); }
+
+let barHits = [], dgmHits = [];
+function drawBars() {
+  const { g, w, h } = ctx($("bars"));
+  if (!S) { g.fillStyle = "rgba(22,24,29,.35)"; g.font = "13px Inter, sans-serif"; g.textAlign = "center"; g.fillText("barcode appears here", w / 2, h / 2); barHits = []; return; }
+  const max = S.max, L = 34, Rp = 14, top = 6, axis = h - 26, X = v => L + Math.min(v, max) / max * (w - L - Rp);
+  const h1 = S.topo.h1.map(([b, d], idx) => ({ b, d, idx, dim: 1 })).sort((a, z) => (z.d - z.b) - (a.d - a.b)).slice(0, 14).sort((a, z) => a.b - z.b);
+  const h0 = S.topo.h0.map(([b, d], idx) => ({ b, d, idx, dim: 0 })).sort((a, z) => (z.d - z.b) - (a.d - a.b)).slice(0, 10);
+  const rows = [...h1, null, ...h0], rh = Math.min(10, (axis - top) / rows.length);
+  barHits = [];
+  rows.forEach((bar, i) => {
+    if (!bar) return;
+    const y = top + i * rh, x0 = X(bar.b), x1 = Number.isFinite(bar.d) ? X(bar.d) : w - Rp;
+    const sig = bar.dim === 1 && S.thr && (bar.d - bar.b) > S.thr, isH = hover && hover.dim === bar.dim && hover.idx === bar.idx;
+    g.globalAlpha = bar.dim === 0 ? .6 : (S.thr && !sig ? .4 : 1);
+    if (bar.b <= eps && eps < bar.d) g.globalAlpha = Math.min(1, g.globalAlpha + .3);
+    g.fillStyle = bar.dim ? H1C : H0C; g.fillRect(x0, y + rh * .18, Math.max(2, x1 - x0), rh * .64);
+    if (!Number.isFinite(bar.d)) { g.beginPath(); g.moveTo(x1, y); g.lineTo(x1 + 6, y + rh / 2); g.lineTo(x1, y + rh); g.fill(); }
+    g.globalAlpha = 1;
+    if (isH) { g.strokeStyle = INK; g.lineWidth = 1.5; g.strokeRect(x0 - 1.5, y + rh * .18 - 1.5, Math.max(2, x1 - x0) + 3, rh * .64 + 3); }
+    barHits.push({ x0, x1, y0: y, y1: y + rh, ...bar });
+  });
+  g.font = "600 11px Inter, sans-serif"; g.textAlign = "left";
+  g.fillStyle = H1C; g.fillText("H₁", 4, top + 10);
+  g.fillStyle = H0C; g.fillText("H₀", 4, top + (h1.length + 1) * rh + 10);
+  g.strokeStyle = "rgba(22,24,29,.4)"; g.lineWidth = 1; g.beginPath(); g.moveTo(L, axis + .5); g.lineTo(w - Rp, axis + .5); g.stroke();
+  g.fillStyle = "rgba(22,24,29,.5)"; g.font = "10px Inter, sans-serif"; g.textAlign = "center";
+  const step = niceStep(max); for (let v = 0; v <= max; v += step) g.fillText(v.toFixed(step < 1 ? 1 : 0), X(v), axis + 12);
+  g.font = "11px Inter, sans-serif"; g.fillText("scale ε (distance between states, 46-D)", (L + w) / 2, h - 2);
+  g.strokeStyle = INK; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(X(eps), top - 2); g.lineTo(X(eps), axis); g.stroke(); g.setLineDash([]);
+}
+
+// hover + click linking
+function describe(f) {
+  if (!f) return `Hover a dot or a bar to see its life; click to jump <span class="m">ε</span> into it.`;
+  const what = f.dim ? "Loop" : "Piece";
+  if (!Number.isFinite(f.d)) return `<b>The whole cloud</b>: once everything is connected, this piece never dies.`;
+  const L = f.d - f.b, sig = f.dim === 1 && S.thr ? (L > S.thr ? ` · <b style="color:var(--h1)">above the shuffle band (${S.thr.toFixed(2)})</b>` : ` · inside the shuffle band`) : "";
+  return `<b>${what}</b>: born at ε = ${f.b.toFixed(2)}, dies at ε = ${f.d.toFixed(2)}, lives <b>${L.toFixed(2)}</b>${sig}`;
+}
+function setHover(f) { const k = f ? f.dim + ":" + f.idx : null, k0 = hover ? hover.dim + ":" + hover.idx : null; if (k === k0) return; hover = f; $("tip").innerHTML = describe(f); drawLab(); }
+function jump(f) { if (!f || !S) return; playing = false; $("play").textContent = "▶ Play"; eps = Number.isFinite(f.d) ? (f.b + f.d) / 2 : S.max * .9; setEpsUI(); drawLab(); }
+const local = (cv, e) => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+function dgmPick(e) {
+  if (!S) return null; dgmHits = []; drawDgm($("dgm"), S.topo, S.thr, S.max, { eps, hover, main: true, hits: dgmHits });
+  const [x, y] = local($("dgm"), e); let best = null, bd = 12;
+  for (const p of dgmHits) { const d = Math.hypot(p.x - x, p.y - y) - (p.dim ? 2 : 0); if (d < bd) { bd = d; best = p; } }
+  return best;
+}
+function barPick(e) { const [x, y] = local($("bars"), e); return barHits.find(b => y >= b.y0 && y < b.y1 && x >= b.x0 - 4 && x <= b.x1 + 8) || null; }
+$("dgm").addEventListener("pointermove", e => setHover(dgmPick(e)));
+$("dgm").addEventListener("pointerleave", () => setHover(null));
+$("dgm").addEventListener("click", e => jump(dgmPick(e)));
+$("bars").addEventListener("pointermove", e => setHover(barPick(e)));
+$("bars").addEventListener("pointerleave", () => setHover(null));
+$("bars").addEventListener("click", e => { const f = barPick(e); if (f) jump(f); else if (S) { const [x] = local($("bars"), e); eps = Math.max(0, Math.min(S.max, (x - 34) / ($("bars").getBoundingClientRect().width - 48) * S.max)); setEpsUI(); drawLab(); } });
+
 function verdict() {
   const el = $("verdict");
-  if (!topo) { el.textContent = "Let the fly turn all the way round for ~20 s, then compute the barcode."; return; }
-  const L = life(topo.h1);
-  if (nullThr === null) { el.innerHTML = `Longest loop lives <b>${(L[0] || 0).toFixed(2)}</b>; the next one ${(L[1] || 0).toFixed(2)}. Run the shuffle test to see whether that beats chance.`; return; }
-  const k = L.filter(v => v > nullThr).length;
-  el.innerHTML = k === 1 ? `<b>One loop</b> survives the shuffle test: the activity lies on a ring.`
-    : k === 0 ? `<b>No loop</b> beats the shuffle threshold: the activity does not form a ring.`
-    : `<b>${k} loops</b> beat the shuffle threshold.`;
+  if (!S) { el.innerHTML = buf.length < 200 ? "Let the fly turn all the way round (or <b style='color:inherit'>fast-forward</b>), then compute." : "Ready: compute the topology of what has been recorded."; return; }
+  const L = lifetimes(S.topo.h1);
+  if (S.thr === null) { el.innerHTML = `The longest-lived loop lives <b>${(L[0] || 0).toFixed(2)}</b>; the next one only ${(L[1] || 0).toFixed(2)}. Press <b style="color:inherit">▶ Play</b> to watch it be born and die, then run the shuffle test to see whether it beats chance.`; return; }
+  const k = L.filter(v => v > S.thr).length;
+  el.innerHTML = k === 1 ? `<b>One loop</b> rises above the shuffle band (${L[0].toFixed(2)} vs ${S.thr.toFixed(2)}): the 46-dimensional activity lies on a ring.`
+    : k === 0 ? `<b>No loop</b> rises above the shuffle band (${(L[0] || 0).toFixed(2)} vs ${S.thr.toFixed(2)}): the activity does not form a ring.`
+    : `<b>${k} loops</b> rise above the shuffle band.`;
 }
 
+/* ---------------- experiments ---------------- */
+const EXPS = [
+  { cond: "fitted", name: "Connectome + fitted gains", what: "The circuit as wired, with 49 cell-type numbers tuned." },
+  { cond: "raw", name: "Raw synapse counts", what: "Same wiring, one overall gain, nothing tuned." },
+  { cond: "noD7", name: "Δ7 removed", what: "Silence the inhibitory Δ7 neurons." },
+  { cond: "shuffled", name: "Wiring shuffled", what: "Shuffle synapses within each cell-type pair." },
+];
+const expRes = {};
+$("exps").innerHTML = EXPS.map(x => `<div class="exp" id="exp-${x.cond}"><h4>${x.name}</h4><p class="what">${x.what}</p><canvas></canvas><div class="res">not run yet</div></div>`).join("");
+function drawExps() {
+  // one shared scale, so a collapsed circuit really looks collapsed
+  let max = 1e-3;
+  for (const r of Object.values(expRes)) if (r && r.topo) for (const [, d] of [...finite(r.topo.h0), ...finite(r.topo.h1)]) max = Math.max(max, d);
+  max *= 1.12;
+  for (const x of EXPS) {
+    const el = $("exp-" + x.cond), r = expRes[x.cond], cv = el.querySelector("canvas");
+    drawDgm(cv, r && r.topo, r && r.thr, max, {});
+  }
+}
+function simulate(cond, seed) {
+  const cc = new Circuit(model, cond), rand = (s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; })(seed), gs = gaussFrom(rand);
+  let hd = 0, o = 0; const X = [];
+  for (let k = 0; k < 50; k++) cc.step(0, 0, model.cueGain);
+  for (let k = 0; k < 6000; k++) { o += DT * (-o / .3) + Math.sqrt(2 * DT / .3) * 1.5 * gs(); hd += o * DT; cc.step(o, null); if (k % EVERY === 4) X.push(Array.from(cc.epgState())); }
+  return X;
+}
+$("btnExp").addEventListener("click", async () => {
+  const btn = $("btnExp"); btn.disabled = true; const t0 = performance.now();
+  for (const x of EXPS) { expRes[x.cond] = null; const el = $("exp-" + x.cond); el.classList.remove("yes"); el.querySelector(".res").textContent = "waiting…"; }
+  drawExps();
+  for (const x of EXPS) {
+    const el = $("exp-" + x.cond), res = el.querySelector(".res");
+    res.textContent = "simulating 60 s…"; await new Promise(r => setTimeout(r, 20));
+    const X = simulate(x.cond, 11);
+    try {
+      const r = await job({ kind: "full", X, n: 400, shuffles: 20, tag: x.cond }, p => { res.textContent = `shuffle test ${p.done}/${p.total}…`; });
+      expRes[x.cond] = { topo: r, thr: r.threshold };
+      const L = lifetimes(r.h1), k = L.filter(v => v > r.threshold).length;
+      el.classList.toggle("yes", k >= 1);
+      res.innerHTML = (k === 1 ? `<b>One loop</b>` : k === 0 ? `<b>No loop</b>` : `<b>${k} loops</b>`) + ` · longest ${(L[0] || 0).toFixed(2)}, chance ${r.threshold.toFixed(2)}`;
+    } catch (e) { res.textContent = "failed: " + e.message; }
+    drawExps();
+  }
+  $("expInfo").textContent = `done in ${((performance.now() - t0) / 1000).toFixed(0)} s`;
+  btn.disabled = false; btn.textContent = "Run again";
+});
+
 sizeAll(); restart(); requestAnimationFrame(tick);
-window.__compass = { c, buf, get topo() { return topo; }, get nullThr() { return nullThr; } };
+window.__compass = { c, buf, get S() { return S; }, setEps: v => { eps = v; setEpsUI(); drawLab(); } };
 </script>
 </body>
 </html>
