@@ -103,7 +103,7 @@ select{font:600 13px/1 var(--f-ui);padding:8px 10px;border-radius:10px;border:1p
 .verdict b{color:var(--h1)}
 .tip{min-height:20px;font-size:13px;color:var(--ink-70);margin-top:6px}
 .tip b{color:var(--ink)}
-#filt,#dgm{aspect-ratio:1;height:auto}
+#filt,#dgm,#mRing,#mPCA,#mDgmW,#mDgmR{aspect-ratio:1;height:auto}
 .empty{position:relative}
 
 /* experiments */
@@ -142,6 +142,7 @@ footer a{color:var(--ink-70)}
     <li><a href="#c3"><span>3</span>The shape of activity</a></li>
     <li><a href="#c4"><span>4</span>Birth and death of a loop</a></li>
     <li><a href="#c5"><span>5</span>Break the circuit</a></li>
+    <li><a href="#c6"><span>6</span>A real mouse</a></li>
   </ol>
 </header>
 <div class="err" id="err"></div>
@@ -195,7 +196,7 @@ footer a{color:var(--ink-70)}
     <section class="ch" id="c2">
       <div class="ch-h"><span class="n">2</span><h2>Wired from the connectome</h2><span class="zh">连接组</span></div>
       <p>Nobody hand-designed this network. The <b id="nNeur">152 neurons</b> and their <b id="nSyn">129,473 synapses</b> come from <span id="srcTxt">the hemibrain, an electron-microscopy reconstruction of a female fly's brain</span>. Each neuron's input is the sum of its partners' activity weighted by how many synapses connect them.</p>
-      <p><b>Two brains.</b> Switch <b>Brain</b> to <b>FlyWire</b> to rewire the same model from a second, independently reconstructed fly: a whole female brain imaged and proofread by a different team with different software. FlyWire does not label the bridge glomeruli, so each E-PG neuron's place on the ring was <b>inferred from its wiring alone</b> (neurons in the same wedge share partners); on the hemibrain, where the answer is known, that inference is off by 7° on average, less than half a wedge. Fitted the same way, the FlyWire circuit also forms a bump that follows the fly, though it drifts faster in the dark (19° average error over 4 s, against 12° for the hemibrain).</p>
+      <p><b>Two brains.</b> Switch <b>Brain</b> to <b>FlyWire</b> to rewire the same model from a second, independently reconstructed fly: a whole female brain imaged and proofread by a different team with different software. FlyWire does not label the bridge glomeruli, so each E-PG neuron's place on the ring was <b>inferred from its wiring alone</b> (neurons in the same wedge share partners); on the hemibrain, where the answer is known, that inference is off by 7° on average, less than half a wedge. Fitted the same way, the FlyWire circuit also forms a bump that follows the fly. Over 20 s in the dark it drifts about as much as the hemibrain circuit (28° average error against 29°), though it is less precise over the first few seconds (18° against 12°).</p>
       <p>Only <b>49 numbers</b> were fitted, never the synapse counts: one gain for each pair of cell types, plus a bias and a time constant per type. With raw synapse counts and a single overall gain, no stable bump forms.</p>
       <div class="card panel">
         <h3>Connection matrix <span id="wInfo">152 × 152 · hemibrain</span></h3>
@@ -275,10 +276,37 @@ footer a{color:var(--ink-70)}
     </section>
 
     <section class="ch" id="c6">
+      <div class="ch-h"><span class="n">6</span><h2>A real mouse, awake and asleep</h2><span class="zh">真实的小鼠</span></div>
+      <p>Everything so far is a model. Here is a recording. A mouse brain has no ring-shaped structure, but its <b>head-direction cells</b> fire when the animal faces one particular direction. These are <b id="mCells">80</b> of them, recorded together in the postsubiculum while the mouse explored an arena and later slept.</p>
+      <div class="row" style="margin-bottom:10px">
+        <span class="lab">Mouse</span>
+        <span class="seg" role="group" aria-label="Mouse"><button type="button" data-mouse="A3710" aria-pressed="true">1</button><button type="button" data-mouse="A3701" aria-pressed="false">2</button></span>
+        <span class="lab" style="margin-left:8px">State</span>
+        <span class="seg" role="group" aria-label="Brain state"><button type="button" data-mstate="wake" aria-pressed="true">Awake</button><button type="button" data-mstate="rem" aria-pressed="false">REM sleep</button></span>
+      </div>
+      <div class="card panel">
+        <h3>Replay <span id="mInfo">60 s · real spikes</span></h3>
+        <div class="lab-grid">
+          <div><canvas id="mRing"></canvas><p class="cap" style="margin-top:4px">Each dot is one cell, placed at the direction it prefers; brightness is how fast it is firing. <b style="color:var(--bump)">Orange line</b>: the direction read out from the cells; <span style="color:var(--h0)"><b>blue</b></span>: where the mouse's head actually points.</p></div>
+          <div><canvas id="mPCA"></canvas><p class="cap" style="margin-top:4px">The same population as points in state space (top two components), <span id="mPcaCap">coloured by the head direction at that moment</span>.</p></div>
+        </div>
+      </div>
+      <div class="card panel">
+        <h3>Persistence diagrams <span>awake vs REM sleep</span></h3>
+        <div class="lab-grid">
+          <div><canvas id="mDgmW"></canvas><p class="cap" id="mResW" style="margin-top:4px"></p></div>
+          <div><canvas id="mDgmR"></canvas><p class="cap" id="mResR" style="margin-top:4px"></p></div>
+        </div>
+      </div>
+      <p style="margin-top:12px"><b>The ring survives sleep.</b> In REM sleep the eyes are closed and the head is still, yet the bump keeps travelling around the same loop, as Chaudhuri et al. (2019) found. The fly model's ring came from wiring; the mouse's ring is also internal: it is a property of the network, not of what the animal sees.</p>
+      <div class="note"><b>How the mouse data were processed.</b> 100 ms bins, square root, 200 ms smoothing; each moment divided by the total population activity (otherwise the overall firing level dominates); z-scored; top 6 principal components; the 80% most active moments, then the densest half; 400 points evenly spaced in time. The grey band comes from 50 surrogates that circularly shift each cell's spike train, sent through the identical pipeline. These diagrams were computed offline with Ripser; the analysis code is in the repository.</div>
+    </section>
+
+    <section class="ch" id="c7">
       <div class="card prose">
         <h3>What this shows, and what it doesn't</h3>
         <p><b>The anatomy and the activity have the same shape.</b> A ring of neurons, wired as the connectome says with only cell-type-level tuning, produces activity whose high-dimensional state space is a single persistent loop. Breaking the wiring removes the loop.</p>
-        <p>This is a <b>simulation constrained by the connectome</b>, not a recording from a fly. Neurotransmitter signs (E-PG, P-EN, P-EG excitatory; Δ7 inhibitory) are standard assumptions. A long H<sub>1</sub> bar shows that the states form a loop; it does not by itself prove a ring attractor, which also needs the bump to persist and move continuously. Real recordings of mouse head-direction cells show the same topology (Chaudhuri et al. 2019).</p>
+        <p>This is a <b>simulation constrained by the connectome</b>, not a recording from a fly. Neurotransmitter signs (E-PG, P-EN, P-EG excitatory; Δ7 inhibitory) are standard assumptions. A long H<sub>1</sub> bar shows that the states form a loop; it does not by itself prove a ring attractor, which also needs the bump to persist and move continuously. Real recordings of mouse head-direction cells show the same topology, awake and asleep (chapter 6).</p>
         <h3>Sources</h3>
         <ol class="refs">
           <li>Seelig &amp; Jayaraman (2015). Neural dynamics for landmark orientation and angular path integration. <i>Nature</i> 521. <a href="https://doi.org/10.1038/nature14446">doi</a></li>
@@ -289,6 +317,7 @@ footer a{color:var(--ink-70)}
           <li>Chaudhuri et al. (2019). The intrinsic attractor manifold and population dynamics of a canonical cognitive circuit. <i>Nat Neurosci</i> 22. <a href="https://doi.org/10.1038/s41593-019-0460-x">doi</a></li>
           <li>Gardner et al. (2022). Toroidal topology of population activity in grid cells. <i>Nature</i> 602. <a href="https://doi.org/10.1038/s41586-021-04268-7">doi</a></li>
           <li>Dorkenwald et al. (2024). Neuronal wiring diagram of an adult brain. <i>Nature</i> 634. <a href="https://doi.org/10.1038/s41586-024-07558-y">doi</a> · Schlegel et al. (2024). Whole-brain annotation and multi-connectome cell typing of <i>Drosophila</i>. <i>Nature</i> 634. <a href="https://doi.org/10.1038/s41586-024-07686-5">doi</a></li>
+          <li>Duszkiewicz et al. (2024). Local origin of excitatory–inhibitory tuning equivalence in a cortical network. <i>Nat Neurosci</i> 27. <a href="https://doi.org/10.1038/s41593-024-01588-5">doi</a> · data: <a href="https://dandiarchive.org/dandiset/000939">DANDI:000939</a>, CC-BY 4.0 (mice A3710 and A3701).</li>
           <li>Data: hemibrain v1.2.1 (Scheffer et al. 2020, <i>eLife</i>), CC-BY 4.0, via neuPrint. FlyWire v783 connections (Zenodo 10676866) and annotations, used under the FlyWire terms (CC BY-NC 4.0); FlyWire E-PG ring positions inferred here from connectivity. Persistent homology: Ripser (Bauer 2021), MIT licence, compiled to WebAssembly.</li>
         </ol>
         <p>New to persistent homology? <a href="topology.html">Play with it on a few points you draw yourself →</a></p>
@@ -400,6 +429,8 @@ function sizeAll() {
   fit(ring); fit($("pb")); fit($("pca"), 300); fit($("bars"), 210); fit($("filt")); fit($("dgm"));
   const mw = $("mat").getBoundingClientRect().width; fit($("mat"), Math.min(mw, 420));
   document.querySelectorAll(".exp canvas").forEach(cv => fit(cv));
+  ["mRing", "mPCA", "mDgmW", "mDgmR"].forEach(id => fit($(id)));
+  if (typeof mouse !== "undefined") { mouseDraw(); mousePCA(); }
   drawMatrix(); drawLab(); drawExps();
 }
 addEventListener("resize", sizeAll);
@@ -781,6 +812,85 @@ $("btnExp").addEventListener("click", async () => {
   if (model !== m0) return;
   $("expInfo").textContent = `${BRAIN[m0.dataset || "hemibrain"]} · done in ${((performance.now() - t0) / 1000).toFixed(0)} s`; btn.textContent = "Run again";
 });
+
+/* ---------------- chapter 6: real mouse ---------------- */
+const mouse = { subj: "A3710", state: "wake", data: {}, t0: performance.now() };
+async function getMouse(subj) {
+  if (!mouse.data[subj]) {
+    const d = await (await fetch(`compass/web/mouse_${subj}.json`)).json();
+    const dec = b64 => Uint8Array.from(atob(b64), ch => ch.charCodeAt(0));
+    d.replayWake.bytes = dec(d.replayWake.R); d.replayRem.bytes = dec(d.replayRem.R);
+    const inf = dg => dg.map(([b, e]) => [b, e === null ? Infinity : e]);
+    for (const k of ["wake", "rem"]) { d[k].h0 = inf(d[k].h0); d[k].h1 = inf(d[k].h1); }
+    mouse.data[subj] = d;
+  }
+  return mouse.data[subj];
+}
+function mouseText(d) {
+  $("mCells").textContent = d.cells;
+  const line = (r, name) => {
+    const k = r.significant, dom = r.h1_longest / Math.max(1e-9, r.h1_second);
+    const head = k === 1 ? `<b style="color:var(--h1)">One loop</b>` : k === 0 ? `<b>No loop</b>` : `<b style="color:var(--h1)">One dominant loop</b>`;
+    const extra = k > 1 ? `; the next bar (${r.h1_second.toFixed(2)}) only just clears the band` : "";
+    return `<b>${name}.</b> ${head}: longest ${r.h1_longest.toFixed(2)}, ${dom.toFixed(1)}× the next; chance ${r.threshold.toFixed(2)}${extra}.`;
+  };
+  $("mResW").innerHTML = line(d.wake, "Awake"); $("mResR").innerHTML = line(d.rem, "REM sleep");
+}
+function mouseDraw() {
+  const d = mouse.data[mouse.subj]; if (!d) return;
+  // diagrams on a shared scale
+  let max = 1e-3; for (const k of ["wake", "rem"]) for (const [, e] of [...d[k].h0, ...d[k].h1]) if (Number.isFinite(e)) max = Math.max(max, e);
+  max *= 1.1;
+  drawDgm($("mDgmW"), d.wake, d.wake.threshold, max, {});
+  drawDgm($("mDgmR"), d.rem, d.rem.threshold, max, {});
+}
+function mouseFrame(now) {
+  const d = mouse.data[mouse.subj];
+  if (d && $("mRing").getBoundingClientRect().bottom > 0 && $("mRing").getBoundingClientRect().top < innerHeight) {
+    const rp = mouse.state === "wake" ? d.replayWake : d.replayRem, n = d.cells;
+    const f = Math.floor(((now - mouse.t0) / 1000 / d.bin)) % rp.n;
+    // ring of cells
+    { const { g, w, h } = ctx($("mRing")); const cx = w / 2, cy = h / 2, R = Math.min(w, h) * .38;
+      g.strokeStyle = "rgba(22,24,29,.12)"; g.beginPath(); g.arc(cx, cy, R, 0, TAU); g.stroke();
+      let x = 0, y = 0;
+      for (let j = 0; j < n; j++) {
+        const a = d.pref[j], v = rp.bytes[f * n + j] / 255; x += v * Math.cos(a); y += v * Math.sin(a);
+        const px = cx + Math.sin(a) * R, py = cy - Math.cos(a) * R;
+        g.fillStyle = `rgba(224,87,47,${(0.08 + .92 * v).toFixed(3)})`; g.beginPath(); g.arc(px, py, 3 + 5 * v, 0, TAU); g.fill();
+      }
+      // decoded direction (population vector) as a thin line
+      const ad = Math.atan2(y, x); g.strokeStyle = "rgba(224,87,47,.8)"; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.sin(ad) * R * .7, cy - Math.cos(ad) * R * .7); g.stroke();
+      if (mouse.state === "wake") {
+        const a = rp.hd[f]; g.fillStyle = H0C; g.beginPath();
+        const ro = R + 10; g.moveTo(cx + Math.sin(a) * ro, cy - Math.cos(a) * ro);
+        g.lineTo(cx + Math.sin(a - .1) * (ro + 16), cy - Math.cos(a - .1) * (ro + 16)); g.lineTo(cx + Math.sin(a + .1) * (ro + 16), cy - Math.cos(a + .1) * (ro + 16)); g.closePath(); g.fill();
+      }
+      g.fillStyle = "rgba(22,24,29,.55)"; g.font = "11px Inter, sans-serif"; g.textAlign = "center";
+      g.fillText(mouse.state === "wake" ? "awake · exploring" : "REM sleep · head still", cx, cy + R * .45);
+      g.fillText(`${(f * d.bin).toFixed(1)} s`, cx, cy + R * .45 + 14);
+    }
+  }
+  requestAnimationFrame(mouseFrame);
+}
+function mousePCA() {
+  const d = mouse.data[mouse.subj]; if (!d) return;
+  const { g, w, h } = ctx($("mPCA")); const st = d[mouse.state];
+  const P = st.Y.map(y => [y[0], y[1]]), xy = scaler(P, w, h, .44);
+  P.forEach((p, i) => { const [x, y] = xy(p); g.fillStyle = mouse.state === "wake" ? hue(st.hd[i]) : "rgba(22,24,29,.55)"; g.beginPath(); g.arc(x, y, 2.3, 0, TAU); g.fill(); });
+  $("mPcaCap").textContent = mouse.state === "wake" ? "coloured by the head direction at that moment" : "in REM sleep (no head direction to colour by)";
+}
+async function mouseSet(subj, state) {
+  mouse.subj = subj ?? mouse.subj; mouse.state = state ?? mouse.state; mouse.t0 = performance.now();
+  document.querySelectorAll("[data-mouse]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mouse === mouse.subj));
+  document.querySelectorAll("[data-mstate]").forEach(b => b.setAttribute("aria-pressed", b.dataset.mstate === mouse.state));
+  const d = await getMouse(mouse.subj); mouseText(d); mouseDraw(); mousePCA();
+  $("mInfo").textContent = `mouse ${mouse.subj === "A3710" ? 1 : 2} · ${d.cells} cells · ${mouse.state === "wake" ? "60 s of exploring" : "60 s of REM sleep"}`;
+}
+document.querySelectorAll("[data-mouse]").forEach(b => b.addEventListener("click", () => mouseSet(b.dataset.mouse, null)));
+document.querySelectorAll("[data-mstate]").forEach(b => b.addEventListener("click", () => mouseSet(null, b.dataset.mstate)));
+const mouseObs = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { mouseObs.disconnect(); mouseSet(); requestAnimationFrame(mouseFrame); } }, { rootMargin: "400px" });
+mouseObs.observe($("c6"));
 
 sizeAll(); restart(); requestAnimationFrame(tick);
 window.__compass = { c, buf, get S() { return S; }, setEps: v => { eps = v; setEpsUI(); drawLab(); } };

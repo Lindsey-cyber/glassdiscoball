@@ -2,3 +2,4 @@ room/
 compass/data/*.pt
 compass/data/fit_log*.txt
 __pycache__/
+compass/data/mouse_hd_*.npz

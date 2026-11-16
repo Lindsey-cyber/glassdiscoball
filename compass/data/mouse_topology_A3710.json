@@ -1,0 +1,16 @@
+{
+ "wake": {
+  "h1_longest": 4.098909616470337,
+  "h1_second": 0.6236062049865723,
+  "threshold": 0.5806354284286499,
+  "significant": 2,
+  "shuffles": 50
+ },
+ "rem": {
+  "h1_longest": 1.815788745880127,
+  "h1_second": 0.643798828125,
+  "threshold": 0.6456587314605713,
+  "significant": 1,
+  "shuffles": 50
+ }
+}
