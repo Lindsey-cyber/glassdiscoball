@@ -27,8 +27,10 @@ a{color:inherit}
 .top a:hover{border-bottom-color:currentColor}
 .top .zh{font-size:13px;color:var(--ink-50);letter-spacing:.3em}
 header.intro{max-width:1320px;margin:0 auto;padding:22px 24px 6px}
-h1{margin:0;font-size:clamp(26px,3vw,36px);font-weight:700;letter-spacing:-.02em}
-header.intro p{margin:8px 0 0;max-width:46rem;color:var(--ink-70);font-size:15px;line-height:1.55}
+h1{margin:0;font-size:clamp(28px,4vw,48px);font-weight:700;letter-spacing:-.03em;line-height:1.08;max-width:22ch}
+.kicker{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-50);margin-bottom:12px}
+.c0{color:var(--h0)} .c1{color:var(--h1)}
+header.intro p{margin:14px 0 0;max-width:46rem;color:var(--ink-70);font-size:15px;line-height:1.55}
 
 main{max-width:1320px;margin:0 auto;padding:18px 24px 60px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(330px,1fr);gap:28px;align-items:start}
 .card{background:var(--panel);border:1px solid var(--ink-12);border-radius:14px}
@@ -97,8 +99,9 @@ input[type=range]{flex:1;accent-color:var(--ink);height:28px}
 <body>
 <nav class="top"><a href="play.html">← All projects</a><span class="zh">拓扑</span></nav>
 <header class="intro">
-  <h1>Persistent homology</h1>
-  <p>Grow a ball around every point and watch the shape they form. Pieces are born, merge and die; loops open and get filled in. The barcode records every feature's life, from birth to death.</p>
+  <div class="kicker">Persistent homology · <span class="c0">components</span> &amp; <span class="c1">loops</span></div>
+  <h1>Draw a shape. Watch its holes be <span class="c1">born</span> and <span class="c0">die</span>.</h1>
+  <p>Grow a ball around every point. Pieces merge, loops open and get filled in, and the barcode on the right records each one's life. The holes that live longest are the real shape of your drawing; the rest is noise.</p>
 </header>
 
 <main>
@@ -120,6 +123,7 @@ input[type=range]{flex:1;accent-color:var(--ink);height:28px}
         <button class="btn sm" data-preset="eight" type="button">Figure eight</button>
         <button class="btn sm" data-preset="clusters" type="button">Clusters</button>
         <button class="btn sm" data-preset="random" type="button">Random</button>
+        <button class="btn sm" id="shake" type="button">Shake</button>
         <button class="btn sm" id="clear" type="button">Clear</button>
       </div>
       <div class="rowbtns">
@@ -133,9 +137,10 @@ input[type=range]{flex:1;accent-color:var(--ink);height:28px}
         </div>
       </div>
       <div class="howto">
-        <b>Drag the slider</b> or press <b>Play</b> to grow the balls.
-        <span class="t-d"><b>Click</b> empty space to add a point, <b>drag</b> a point to move it, <b>double-click</b> a point to delete it.</span>
-        <span class="t-m"><b>Tap</b> to add a point, <b>drag</b> to move it, <b>double-tap</b> to delete it.</span>
+        <b>Draw on the canvas</b>: an O, an 8, a letter, your initial. When you lift your finger the balls start growing and every hole in your drawing is born and dies.
+        <span class="t-d"><b>Drag</b> a point to move it, <b>double-click</b> to delete it.</span>
+        <span class="t-m"><b>Drag</b> a point to move it, <b>double-tap</b> to delete it.</span>
+        <b>Shake</b> jiggles every point: real holes survive, noise does not.
         <b><span class="t-d">Hover</span><span class="t-m">Tap</span> a bar</b> or a dot in the diagram to see which feature it is.
       </div>
     </div>
@@ -179,7 +184,7 @@ input[type=range]{flex:1;accent-color:var(--ink);height:28px}
 "use strict";
 const $ = id => document.getElementById(id);
 const C0 = "#2563c9", C1 = "#d9472b", INK = "#16181d";
-const MAXP = 50;
+const MAXP = 70;
 
 /* ---------------------------------------------------------------- data */
 let pts = [];
@@ -216,6 +221,7 @@ function xorSorted(a,b){
   return o;
 }
 function compute(){
+  fx=[];   // effects refer to point indices, which may have changed
   const n=pts.length;
   const out={h0:[],h1:[],edges:[],tris:[],n};
   if(!n){ res=out; return; }
@@ -270,12 +276,15 @@ function compute(){
 }
 
 /* ---------------------------------------------------------------- events */
-let events=[];
+let events=[], fx=[];
 function buildEvents(){
   events=[];
-  res.h0.forEach(f=>{ if(Number.isFinite(f.d)) events.push({r:f.d,dim:0,kind:"death",txt:"Two components touch: the younger one dies (H₀ death)."}); });
-  res.h1.forEach(f=>{ events.push({r:f.b,dim:1,kind:"birth",txt:"An edge closes a cycle: a loop is born (H₁ birth)."});
-                      events.push({r:f.d,dim:1,kind:"death",txt:"Triangles fill the loop: it dies (H₁ death)."}); });
+  const mid=e=>({x:(pts[e.a].x+pts[e.b].x)/2,y:(pts[e.a].y+pts[e.b].y)/2});
+  const centre=cyc=>{let x=0,y=0;cyc.forEach(e=>{const m=mid(e);x+=m.x;y+=m.y;});return {x:x/cyc.length,y:y/cyc.length};};
+  res.h0.forEach(f=>{ if(Number.isFinite(f.d)) events.push({r:f.d,dim:0,kind:"death",at:mid(f.edge),txt:"Two components touch: the younger one dies (H₀ death)."}); });
+  res.h1.forEach(f=>{ const at=centre(f.cycle), life=f.d-f.b;
+                      events.push({r:f.b,dim:1,kind:"birth",at,f,life,txt:"An edge closes a cycle: a loop is born (H₁ birth)."});
+                      events.push({r:f.d,dim:1,kind:"death",at,f,life,txt:"Triangles fill the loop: it dies (H₁ death)."}); });
   events.sort((p,q)=>p.r-q.r);
 }
 const logEl=$("log");
@@ -283,6 +292,8 @@ function logCross(r0,r1){
   if(r1<=r0) return;
   const hit=events.filter(e=>e.r>r0&&e.r<=r1);
   if(!hit.length) return;
+  const now=performance.now();
+  hit.forEach(e=>{ if(e.dim===1||fx.length<40) fx.push({...e,t0:now}); });
   const show = hit.length>3 ? [...hit.slice(-2)] : hit;
   if(hit.length>3) push(hit[hit.length-3].r,null,`${hit.length-2} more events…`);
   show.forEach(e=>push(e.r,e.dim,e.txt));
@@ -323,7 +334,7 @@ function drawSpace(){
   // faint grid
   c.strokeStyle="rgba(22,24,29,.05)"; c.lineWidth=1;
   for(let i=1;i<10;i++){const p=Math.round(i/10*k)+.5;c.beginPath();c.moveTo(p,0);c.lineTo(p,k);c.moveTo(0,p);c.lineTo(k,p);c.stroke();}
-  if(!res||!res.n){ c.fillStyle="rgba(22,24,29,.45)"; c.font=`${14*DPR}px Inter, sans-serif`; c.textAlign="center"; c.fillText("Click to add points, or pick a data set below.",k/2,k/2); return; }
+  if(!res||!res.n){ c.fillStyle="rgba(22,24,29,.45)"; c.font=`${14*DPR}px Inter, sans-serif`; c.textAlign="center"; c.fillText("Draw a shape here: an O, an 8, your initial…",k/2,k/2); return; }
   // union of balls: draw opaque offscreen, composite once so overlaps stay flat
   if(showBalls&&R>0){
     octx.setTransform(1,0,0,1,0,0); octx.clearRect(0,0,off.width,off.height);
@@ -346,9 +357,28 @@ function drawSpace(){
   for(const [i,f] of res.h1.entries()){
     const isH=hover&&hover.dim===1&&hover.i===i;
     if(!(alive(f)||isH)) continue;
-    c.strokeStyle=C1; c.globalAlpha=isH?1:.85; c.lineWidth=(isH?3.4:2.2)*DPR; c.lineCap="round"; c.beginPath();
-    for(const e of f.cycle){const a=pts[e.a],b=pts[e.b];c.moveTo(a.x*k,a.y*k);c.lineTo(b.x*k,b.y*k);} c.stroke(); c.globalAlpha=1;
+    c.strokeStyle=C1; c.globalAlpha=isH?1:.85; c.lineWidth=(isH?3.4:2.4)*DPR; c.lineCap="round"; c.shadowColor="rgba(217,71,43,.45)"; c.shadowBlur=8*DPR; c.beginPath();
+    for(const e of f.cycle){const a=pts[e.a],b=pts[e.b];c.moveTo(a.x*k,a.y*k);c.lineTo(b.x*k,b.y*k);} c.stroke(); c.globalAlpha=1; c.shadowBlur=0;
   }
+  // birth / death effects: a ripple where two pieces merge, a red ring when a loop opens, a flash when it closes
+  const now=performance.now();
+  fx=fx.filter(e=>now-e.t0<(e.dim?1400:700));
+  for(const e of fx){
+    const u=(now-e.t0)/(e.dim?1400:700), x=e.at.x*k, y=e.at.y*k, ease=1-(1-u)**3;
+    c.save(); c.globalAlpha=(1-u)*(e.dim?.95:.5);
+    if(e.dim===0){ c.strokeStyle=C0; c.lineWidth=1.5*DPR; c.beginPath(); c.arc(x,y,(3+ease*14)*DPR,0,Math.PI*2); c.stroke(); }
+    else{
+      const big=e.life>.25*RMAX;
+      if(e.kind==="death"){ c.fillStyle=C1; c.globalAlpha*=.22; c.beginPath(); const cy=e.f.cycle;
+        cy.forEach(ed=>{const a=pts[ed.a],b=pts[ed.b];c.moveTo(x,y);c.lineTo(a.x*k,a.y*k);c.lineTo(b.x*k,b.y*k);c.closePath();}); c.fill(); c.globalAlpha=(1-u)*.95; }
+      else{ c.strokeStyle=C1; c.lineWidth=(big?3:1.6)*DPR; c.shadowColor=C1; c.shadowBlur=12*DPR*(1-u);
+        c.beginPath(); for(const ed of e.f.cycle){const a=pts[ed.a],b=pts[ed.b];c.moveTo(a.x*k,a.y*k);c.lineTo(b.x*k,b.y*k);} c.stroke(); c.shadowBlur=0; }
+      if(big){ c.fillStyle=C1; c.font=`600 ${13*DPR}px Inter, sans-serif`; c.textAlign="center"; c.textBaseline="middle";
+        c.fillText(e.kind==="birth"?"a loop is born":"filled in: the loop dies",x,y-ease*10*DPR); }
+    }
+    c.restore();
+  }
+  if(fx.length) dirty=true;
   // hovered H0 component
   let hv=null;
   if(hover&&hover.dim===0) hv=new Set(res.h0[hover.i].verts);
@@ -456,8 +486,8 @@ function frame(){
   if(recompute){ compute(); recompute=false; sizeBar(); dirty=true; }
   if(playing){
     const now=performance.now(), dt=Math.min(.05,(now-lastT)/1000); lastT=now;
-    const r0=R; R=Math.min(RMAX,R+RMAX*dt/9); logCross(r0,R); dirty=true;
-    if(R>=RMAX) setPlay(false);
+    if(R>=RMAX){ if(!holdT) holdT=now; if(now-holdT>1800){ holdT=0; R=0; fx=[]; resetLog(); } dirty=true; }
+    else{ const r0=R; R=Math.min(RMAX,R+RMAX*dt/8); logCross(r0,R); dirty=true; }
   }
   if(dirty){ draw(); dirty=false; }
   requestAnimationFrame(frame);
@@ -465,16 +495,18 @@ function frame(){
 let lastBarH=0;
 function sizeBar(){ const h=barH(); if(h!==lastBarH){ lastBarH=h; sizeAll(); } }
 
-let playing=false, lastT=0;
+let playing=false, lastT=0, holdT=0;
 function setPlay(on){
   playing=on; $("play").textContent=on?"❚❚ Pause":"▶ Play";
-  if(on){ if(R>=RMAX-1e-9){ R=0; resetLog(); } lastT=performance.now(); }
+  holdT=0; if(on){ if(R>=RMAX-1e-9){ R=0; fx=[]; resetLog(); } lastT=performance.now(); }
 }
 $("play").addEventListener("click",()=>setPlay(!playing));
 $("r").addEventListener("input",e=>{ const r0=R; R=e.target.value/1000*RMAX; if(R<r0&&R<1e-9) resetLog(); logCross(r0,R); setPlay(false); dirty=true; });
 
-function load(name){ pts=PRESETS[name](); R=0; hover=null; setPlay(false); recompute=true; resetLog(); }
+const calm=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function load(name){ pts=PRESETS[name](); fresh=true; R=0; hover=null; fx=[]; recompute=true; resetLog(); setPlay(!calm); }
 document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>load(b.dataset.preset)));
+$("shake").addEventListener("click",()=>{ const r=Math.random; pts=pts.map(p=>({x:Math.min(.99,Math.max(.01,p.x+gauss(r)*.012)),y:Math.min(.99,Math.max(.01,p.y+gauss(r)*.012))})); recompute=true; fx=[]; });
 $("clear").addEventListener("click",()=>{ pts=[]; R=0; hover=null; setPlay(false); recompute=true; resetLog(); });
 const tog=(id,fn)=>$(id).addEventListener("click",e=>{ const on=e.currentTarget.getAttribute("aria-pressed")!=="true"; e.currentTarget.setAttribute("aria-pressed",on); e.currentTarget.classList.toggle("on",on); fn(on); dirty=true; });
 tog("tBalls",on=>showBalls=on); tog("tCx",on=>showCx=on);
@@ -482,20 +514,34 @@ const setMode=m=>{ mode=m; $("cech").setAttribute("aria-pressed",m==="cech"); $(
 $("cech").addEventListener("click",()=>setMode("cech")); $("rips").addEventListener("click",()=>setMode("rips"));
 
 // points on the canvas
-let dragging=-1, overPt=-1, downAt=null;
+let dragging=-1, overPt=-1, downAt=null, stroke=null, wasPlaying=false, fresh=false;
 const toU=e=>{const r=space.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height};};
 function nearest(u){ let best=-1,bd=(14/S)**2; pts.forEach((p,i)=>{const d=(p.x-u.x)**2+(p.y-u.y)**2;if(d<bd){bd=d;best=i;}}); return best; }
 space.addEventListener("pointerdown",e=>{
   const u=toU(e); let i=nearest(u);
-  if(i<0){ if(pts.length>=MAXP) return; pts.push({x:u.x,y:u.y}); i=pts.length-1; recompute=true; }
-  dragging=i; space.setPointerCapture(e.pointerId); space.classList.add("dragging");
+  space.setPointerCapture(e.pointerId);
+  if(i<0){   // empty space: start drawing. Points are dropped along the stroke; the balls wait until you lift.
+    if(pts.length>=MAXP) return;
+    wasPlaying=playing; setPlay(false); R=0;
+    if(fresh){ pts=[]; fresh=false; }   // the first stroke over a ready-made data set starts a fresh drawing
+    pts.push({x:u.x,y:u.y}); resetLog(); stroke={last:u,added:1}; recompute=true; return;
+  }
+  dragging=i; fresh=false; space.classList.add("dragging");
 });
 space.addEventListener("pointermove",e=>{
   const u=toU(e);
+  if(stroke){
+    const d=Math.hypot(u.x-stroke.last.x,u.y-stroke.last.y);
+    if(d>=.045&&pts.length<MAXP&&u.x>.01&&u.x<.99&&u.y>.01&&u.y<.99){ const j=(Math.random()-.5)*.012;
+      pts.push({x:u.x+j,y:u.y-j}); stroke.last=u; stroke.added++; recompute=true; }
+    return;
+  }
   if(dragging>=0){ pts[dragging]={x:Math.min(.99,Math.max(.01,u.x)),y:Math.min(.99,Math.max(.01,u.y))}; recompute=true; return; }
   const i=nearest(u); if(i!==overPt){ overPt=i; space.classList.toggle("over-pt",i>=0); dirty=true; }
 });
-const up=()=>{ dragging=-1; space.classList.remove("dragging"); };
+const up=()=>{
+  if(stroke){ const n=stroke.added; stroke=null; if(n>=5||wasPlaying) setTimeout(()=>{ compute(); recompute=false; R=0; resetLog(); setPlay(true); },250); }
+  dragging=-1; space.classList.remove("dragging"); };
 space.addEventListener("pointerup",up); space.addEventListener("pointercancel",up);
 space.addEventListener("pointerleave",()=>{ if(overPt>=0){overPt=-1;dirty=true;} });
 space.addEventListener("dblclick",e=>{ const i=nearest(toU(e)); if(i>=0){ pts.splice(i,1); overPt=-1; hover=null; recompute=true; } });

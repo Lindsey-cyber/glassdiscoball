@@ -4,8 +4,11 @@
 //   kind "full":    both, for the side-by-side experiments
 import { loadRipser, ripser } from "./ripser-wasm.js";
 
+// In the self-contained build the WebAssembly binary is embedded as base64 (globalThis.__RIPSER_WASM_B64).
 let modP = null;
-const mod = () => (modP ||= loadRipser(new URL("./ripser.wasm", import.meta.url).href));
+const mod = () => (modP ||= loadRipser(globalThis.__RIPSER_WASM_B64
+  ? Uint8Array.from(atob(globalThis.__RIPSER_WASM_B64), ch => ch.charCodeAt(0))
+  : new URL("./ripser.wasm", import.meta.url).href));
 
 export function subsample(X, n) {
   if (X.length <= n) return X;
@@ -33,7 +36,8 @@ async function nullThreshold(m, X, n, shuffles, onProgress) {
   return best;
 }
 
-self.onmessage = async ({ data }) => {
+// `post` is self.postMessage inside a worker, or a callback when the page has to run this on the main thread.
+export async function handle(data, post) {
   const { id, kind, X, n = 400, shuffles = 20, tag } = data;
   try {
     const m = await mod();
@@ -41,14 +45,15 @@ self.onmessage = async ({ data }) => {
       const t0 = performance.now();
       const pts = subsample(X, n);
       const r = await ripser(m, pts, { dim: 1 });
-      self.postMessage({ id, kind, h0: r.dims[0] || [], h1: r.dims[1] || [], points: pts.length, ms: performance.now() - t0 });
+      post({ id, kind, h0: r.dims[0] || [], h1: r.dims[1] || [], points: pts.length, ms: performance.now() - t0 });
     } else if (kind === "null") {
-      const thr = await nullThreshold(m, X, n, shuffles, (done, best) => self.postMessage({ id, kind: "progress", done, total: shuffles, best }));
-      self.postMessage({ id, kind, threshold: thr, shuffles });
+      const thr = await nullThreshold(m, X, n, shuffles, (done, best) => post({ id, kind: "progress", done, total: shuffles, best }));
+      post({ id, kind, threshold: thr, shuffles });
     } else if (kind === "full") {
       const r = await ripser(m, subsample(X, n), { dim: 1 });
-      const thr = await nullThreshold(m, X, n, shuffles, (done) => self.postMessage({ id, kind: "progress", tag, done, total: shuffles }));
-      self.postMessage({ id, kind, tag, h0: r.dims[0] || [], h1: r.dims[1] || [], threshold: thr });
+      const thr = await nullThreshold(m, X, n, shuffles, (done) => post({ id, kind: "progress", tag, done, total: shuffles }));
+      post({ id, kind, tag, h0: r.dims[0] || [], h1: r.dims[1] || [], threshold: thr });
     }
-  } catch (e) { self.postMessage({ id, kind: "error", tag, message: String(e && e.message || e) }); }
-};
+  } catch (e) { post({ id, kind: "error", tag, message: String(e && e.message || e) }); }
+}
+if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope) self.onmessage = ({ data }) => handle(data, m => self.postMessage(m));

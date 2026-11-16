@@ -57,8 +57,7 @@
       transition: box-shadow .5s ease, transform .5s cubic-bezier(.2,.7,.2,1);
     }
     .card.feature .frame { aspect-ratio: 16 / 8; }
-    .card.feature:first-child img { object-position: center 20%; }
-    .card.feature:not(:first-child) img { object-position: center 30%; }
+    .card.feature img { object-position: center 20%; }
     .frame img {
       display: block; width: 100%; height: 100%; object-fit: cover;
       transition: transform 1.2s cubic-bezier(.2,.7,.2,1), filter .6s ease;
@@ -111,56 +110,57 @@
 
     <header>
       <h1>Claude vibe-coding projects</h1>
-      <p>Small interactive experiments in light, physics and traditional Chinese colour, built together with Claude. Each one is something to play with.</p>
+      <p>Small interactive experiments in topology, neuroscience, light, physics and traditional Chinese colour, built together with Claude. Each one is something to play with.</p>
     </header>
 
     <section class="grid" aria-label="Projects">
+      <a class="card" href="topology.html">
+        <div class="frame"><img src="images/play/topology.webp" alt="Points on two loops with growing balls, the simplicial complex, and a barcode of births and deaths" width="1200" height="750"></div>
+        <div class="meta"><span class="num">01</span><span class="zh">拓扑</span><span class="en">Persistent Homology</span></div>
+        <p class="desc">Draw any shape, then watch its holes be born and die as balls grow around every point, recorded live as a barcode.</p>
+        <ul class="tags"><li>Draw your own shape</li><li>Birth &amp; death of loops</li><li>Barcode</li><li>Persistence diagram</li></ul>
+      </a>
+
+      <a class="card" href="compass.html">
+        <div class="frame"><img src="images/play/compass.webp" alt="A fruit fly inside a ring of 16 wedges lit by a bump of neural activity, next to a ring-shaped point cloud and a persistence diagram with one point far from the diagonal" width="1200" height="750"></div>
+        <div class="meta"><span class="num">02</span><span class="zh">罗盘</span><span class="en">The Fly's Compass</span></div>
+        <p class="desc">A fruit-fly brain circuit wired from two real connectomes, running live. Turn the fly, then ask topology whether its neural activity is a ring, and compare with real mouse neurons, awake and asleep.</p>
+        <ul class="tags"><li>Hemibrain &amp; FlyWire connectomes</li><li>Live neural circuit</li><li>Persistent homology in the browser</li><li>Real mouse recordings</li></ul>
+      </a>
+
       <a class="card feature" href="liuguang.html">
-        <div class="frame"><img src="images/play/liuguang.webp" alt="A mirrored disco ball hanging in the dark, surrounded by falling confetti" width="1200" height="750"></div>
-        <div class="meta"><span class="num">01</span><span class="zh">流光</span><span class="en">Mirror Ball</span></div>
+        <div class="frame"><img src="images/play/liuguang.webp" alt="A mirrored disco ball hanging in the dark, surrounded by falling confetti" width="1200" height="750" loading="lazy"></div>
+        <div class="meta"><span class="num">03</span><span class="zh">流光</span><span class="en">Mirror Ball</span></div>
         <p class="desc">A disco ball with real physics. Grab it, throw it, and knock the mirrors loose.</p>
         <ul class="tags"><li>Real physics engine</li><li>Drag &amp; throw</li><li>Breakable mirrors</li><li>Lights on / off</li></ul>
       </a>
 
       <a class="card" href="qinglv.html">
         <div class="frame"><img src="images/play/qinglv.webp" alt="Large golden characters 青绿 over a misty landscape with a red sun" width="1200" height="750" loading="lazy"></div>
-        <div class="meta"><span class="num">02</span><span class="zh">青绿</span><span class="en">Blue-Green Mountains</span></div>
+        <div class="meta"><span class="num">04</span><span class="zh">青绿</span><span class="en">Blue-Green Mountains</span></div>
         <p class="desc">Scroll into a blue-green landscape painting.</p>
         <ul class="tags"><li>Scroll to fly</li><li>Live WebGL mountains</li><li>Classical poems</li></ul>
       </a>
 
       <a class="card" href="fenqiang.html">
         <div class="frame"><img src="images/play/fenqiang.webp" alt="A fan-shaped lattice window on a whitewashed wall with bamboo shadows" width="1200" height="750" loading="lazy"></div>
-        <div class="meta"><span class="num">03</span><span class="zh">粉墙</span><span class="en">Whitewashed Wall</span></div>
+        <div class="meta"><span class="num">05</span><span class="zh">粉墙</span><span class="en">Whitewashed Wall</span></div>
         <p class="desc">Bamboo shadows on a garden wall. Your cursor is the wind; drag the sun through the day.</p>
         <ul class="tags"><li>Real sun position</li><li>Wind &amp; falling leaves</li><li>Day to night</li></ul>
       </a>
 
       <a class="card" href="tianqing.html">
         <div class="frame"><img src="images/play/tianqing.webp" alt="A pale celadon cup on a soft blue-green background with crackle lines" width="1200" height="750" loading="lazy"></div>
-        <div class="meta"><span class="num">04</span><span class="zh">天青</span><span class="en">Celadon</span></div>
+        <div class="meta"><span class="num">06</span><span class="zh">天青</span><span class="en">Celadon</span></div>
         <p class="desc">A Ru-ware cup whose glaze slowly crackles the longer you linger.</p>
         <ul class="tags"><li>Growing crackle</li><li>Turn the 3D cup</li><li>Sound</li></ul>
       </a>
 
       <a class="card" href="yubi.html">
         <div class="frame"><img src="images/play/yubi.webp" alt="A carved jade bi disc glowing against black" width="1200" height="750" loading="lazy"></div>
-        <div class="meta"><span class="num">05</span><span class="zh">玉璧</span><span class="en">Jade Disc</span></div>
+        <div class="meta"><span class="num">07</span><span class="zh">玉璧</span><span class="en">Jade Disc</span></div>
         <p class="desc">An ancient jade disc. Your cursor is the light.</p>
         <ul class="tags"><li>Cursor is the light</li><li>Colour-shifting jade</li><li>WebGL shader</li></ul>
-      </a>
-      <a class="card feature" href="topology.html">
-        <div class="frame"><img src="images/play/topology.webp" alt="Points on two loops with growing balls, the simplicial complex, and a barcode of births and deaths" width="1200" height="750" loading="lazy"></div>
-        <div class="meta"><span class="num">06</span><span class="zh">拓扑</span><span class="en">Persistent Homology</span></div>
-        <p class="desc">Grow balls around points and watch components and loops be born and die, recorded live as a barcode.</p>
-        <ul class="tags"><li>Filtration</li><li>Birth &amp; death</li><li>Barcode</li><li>Persistence diagram</li><li>Draw your own points</li></ul>
-      </a>
-
-      <a class="card feature" href="compass.html">
-        <div class="frame"><img src="images/play/compass.webp" alt="A fruit fly inside a ring of 16 wedges lit by a bump of neural activity, next to a ring-shaped point cloud and a persistence diagram with one point far from the diagonal" width="1200" height="750" loading="lazy"></div>
-        <div class="meta"><span class="num">07</span><span class="zh">罗盘</span><span class="en">The Fly's Compass</span></div>
-        <p class="desc">A fruit-fly brain circuit wired from two real connectomes, running live. Turn the fly, then ask topology whether its neural activity is a ring, and compare with real mouse neurons, awake and asleep.</p>
-        <ul class="tags"><li>Hemibrain &amp; FlyWire connectomes</li><li>Live neural circuit</li><li>Persistent homology in the browser</li><li>Real mouse recordings</li></ul>
       </a>
     </section>
 

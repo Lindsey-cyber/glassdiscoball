@@ -7,7 +7,7 @@ Pages that use WebGL libraries (`liuguang.html`) load them from a CDN, so they n
 | --- | --- |
 | `index.html` | Home page (正面). The "Claude vibe-coding projects" link in the top-right corner leads to the gallery. |
 | `topology.html` | Persistent homology: filtration, birth and death, barcode, persistence diagram. |
-| `compass.html` | The fly's compass: connectome-constrained head-direction circuit (hemibrain and FlyWire), persistent homology in the browser (Ripser → WebAssembly), real mouse head-direction cells. Needs `compass/web/`; pipeline in `compass/pipeline/`. |
+| `compass.html` | The fly's compass: connectome-constrained head-direction circuit (hemibrain and FlyWire), persistent homology in the browser (Ripser → WebAssembly), real mouse head-direction cells. Self-contained: `compass/embed.py` bakes `compass/web/` (simulator, data, WebAssembly) into the page, so it also works opened as a plain file; rerun it after changing anything in `compass/web/`. Pipeline in `compass/pipeline/`. |
 | `play.html` | Claude vibe-coding projects — a simple gallery of preview cards, one per project. |
 | `liuguang.html` | 流光 — a mirror ball on a chain, simulated with Rapier (rigid-body physics) and rendered with Three.js. |
 | `qinglv.html`, `fenqiang.html`, `tianqing.html`, `yubi.html` | 四面 — four rooms in traditional Chinese colours. |
