@@ -60,6 +60,11 @@ main{max-width:1320px;margin:0 auto;padding:22px 24px 70px;display:grid;grid-tem
 .btn.ghost{border-style:dashed}
 .btn:disabled{opacity:.4;cursor:default}
 select{font:600 13px/1 var(--f-ui);padding:8px 10px;border-radius:10px;border:1px solid var(--ink-30);background:#fff;color:var(--ink);max-width:100%}
+.seg{display:inline-flex;border:1px solid var(--ink-30);border-radius:999px;overflow:hidden}
+.seg button{font:600 13px/1 var(--f-ui);background:#fff;color:var(--ink-70);border:0;padding:8px 14px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--ink-12)}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+.seg button:disabled{opacity:.5;cursor:wait}
 .howto{font-size:13px;line-height:1.5;color:var(--ink-70);background:var(--ink-06);border-radius:10px;padding:9px 12px}
 .howto b{color:var(--ink)}
 
@@ -161,6 +166,10 @@ footer a{color:var(--ink-70)}
         <button class="btn" id="reset" type="button">Reset</button>
       </div>
       <div class="row">
+        <span class="lab">Brain</span>
+        <span class="seg" role="group" aria-label="Connectome"><button type="button" data-cx="hemibrain" aria-pressed="true">Hemibrain</button><button type="button" data-cx="flywire" aria-pressed="false">FlyWire</button></span>
+      </div>
+      <div class="row">
         <span class="lab">Circuit</span>
         <select id="cond" aria-label="Circuit condition">
           <option value="fitted">Connectome + 49 fitted cell-type numbers</option>
@@ -177,7 +186,7 @@ footer a{color:var(--ink-70)}
     <!-- 1 -->
     <section class="ch" id="c1">
       <div class="ch-h"><span class="n">1</span><h2>A ring in the brain</h2><span class="zh">椭球体</span></div>
-      <p>In the middle of the fly brain is a doughnut-shaped structure, the <b>ellipsoid body</b>. About 46 <b>E-PG</b> neurons tile it in 16 wedges. At any moment a single <b>bump</b> of activity sits somewhere on the ring, and when the fly turns, the bump turns with it, even in complete darkness. The fly is integrating its own angular velocity, like a sailor doing dead reckoning.</p>
+      <p>In the middle of the fly brain is a doughnut-shaped structure, the <b>ellipsoid body</b>. About 46 <b>E-PG</b> neurons (47 in the FlyWire brain) tile it in 16 wedges. At any moment a single <b>bump</b> of activity sits somewhere on the ring, and when the fly turns, the bump turns with it, even in complete darkness. The fly is integrating its own angular velocity, like a sailor doing dead reckoning.</p>
       <p>That is what the ring on the left shows. Each wedge's orange is the mean firing of the E-PG neurons in it. The strip underneath is the <b>protocerebral bridge</b>, where the same neurons hand the bump to <b>P-EN</b> cells, which shift it left or right as the fly turns.</p>
       <div class="note"><b>Try it.</b> Switch Auto-turn off and drag the fly a quarter turn. The error should stay small. Leave it in darkness for a minute and the decoded heading slowly drifts, as a real fly's does; turn the landmark on and it snaps back.</div>
     </section>
@@ -185,7 +194,8 @@ footer a{color:var(--ink-70)}
     <!-- 2 -->
     <section class="ch" id="c2">
       <div class="ch-h"><span class="n">2</span><h2>Wired from the connectome</h2><span class="zh">连接组</span></div>
-      <p>Nobody hand-designed this network. The <b>152 neurons</b> and their <b>129,473 synapses</b> come from the hemibrain, an electron-microscopy reconstruction of a female fly's brain. Each neuron's input is the sum of its partners' activity weighted by how many synapses connect them.</p>
+      <p>Nobody hand-designed this network. The <b id="nNeur">152 neurons</b> and their <b id="nSyn">129,473 synapses</b> come from <span id="srcTxt">the hemibrain, an electron-microscopy reconstruction of a female fly's brain</span>. Each neuron's input is the sum of its partners' activity weighted by how many synapses connect them.</p>
+      <p><b>Two brains.</b> Switch <b>Brain</b> to <b>FlyWire</b> to rewire the same model from a second, independently reconstructed fly: a whole female brain imaged and proofread by a different team with different software. FlyWire does not label the bridge glomeruli, so each E-PG neuron's place on the ring was <b>inferred from its wiring alone</b> (neurons in the same wedge share partners); on the hemibrain, where the answer is known, that inference is off by 7° on average, less than half a wedge. Fitted the same way, the FlyWire circuit also forms a bump that follows the fly, though it drifts faster in the dark (19° average error over 4 s, against 12° for the hemibrain).</p>
       <p>Only <b>49 numbers</b> were fitted, never the synapse counts: one gain for each pair of cell types, plus a bias and a time constant per type. With raw synapse counts and a single overall gain, no stable bump forms.</p>
       <div class="card panel">
         <h3>Connection matrix <span id="wInfo">152 × 152 · hemibrain</span></h3>
@@ -197,13 +207,13 @@ footer a{color:var(--ink-70)}
     <!-- 3 -->
     <section class="ch" id="c3">
       <div class="ch-h"><span class="n">3</span><h2>The shape of activity</h2><span class="zh">状态空间</span></div>
-      <p>At each moment, the 46 E-PG firing rates are one point in a <b>46-dimensional</b> space. As the fly turns, that point moves. If the circuit really is a compass, the point can only go round: the cloud of all moments should form a <b>closed loop</b>, one point on the loop per heading.</p>
+      <p>At each moment, the E-PG firing rates are one point in a space with one axis per neuron: <b class="dimN">46</b> dimensions. As the fly turns, that point moves. If the circuit really is a compass, the point can only go round: the cloud of all moments should form a <b>closed loop</b>, one point on the loop per heading.</p>
       <div class="card panel">
         <h3>State space <span id="recN">0 s recorded</span></h3>
         <canvas id="pca" height="300"></canvas>
         <div class="legend"><span><i style="background:linear-gradient(90deg,hsl(0,70%,50%),hsl(120,70%,50%),hsl(240,70%,50%),hsl(360,70%,50%))"></i>true heading 0°→360°</span><span>projected onto the top 2 principal components</span></div>
       </div>
-      <p style="margin-top:12px">A loop in a picture is suggestive, but a projection can create or hide loops. Topology lets us ask the question in all 46 dimensions at once.</p>
+      <p style="margin-top:12px">A loop in a picture is suggestive, but a projection can create or hide loops. Topology lets us ask the question in all <span class="dimN">46</span> dimensions at once.</p>
     </section>
 
     <!-- 4 -->
@@ -226,7 +236,7 @@ footer a{color:var(--ink-70)}
         <div class="lab-grid">
           <div>
             <canvas id="filt"></canvas>
-            <p class="cap" style="margin-top:4px">The 400 analysed moments, with a line between any two closer than <span class="m">ε</span> in the full 46-D space.</p>
+            <p class="cap" style="margin-top:4px">The 400 analysed moments, with a line between any two closer than <span class="m">ε</span> in the full <span class="dimN">46</span>-D space.</p>
           </div>
           <div>
             <canvas id="dgm"></canvas>
@@ -258,8 +268,8 @@ footer a{color:var(--ink-70)}
     <!-- 5 -->
     <section class="ch" id="c5">
       <div class="ch-h"><span class="n">5</span><h2>Break the circuit</h2><span class="zh">破坏</span></div>
-      <p>If the ring in the activity comes from the wiring, then breaking the wiring should break the ring. Each experiment below runs a fresh circuit for 60 s of a fly wandering in the dark, then computes the persistence diagram and a 20-shuffle test, exactly as above. All four diagrams share one scale.</p>
-      <div class="row"><button class="btn primary" id="btnExp" type="button">Run all four experiments</button><span class="cap" id="expInfo" style="margin:0">about 15 s on a laptop</span></div>
+      <p>If the ring in the activity comes from the wiring, then breaking the wiring should break the ring. Each experiment below runs a fresh copy of the selected brain's circuit for 60 s of a fly wandering in the dark, then computes the persistence diagram and a 20-shuffle test, exactly as above. All four diagrams share one scale.</p>
+      <div class="row"><button class="btn primary" id="btnExp" type="button">Run all four experiments</button><span class="cap" id="expInfo" style="margin:0">runs the hemibrain circuit · about 25 s</span></div>
       <div class="exps" id="exps"></div>
       <div class="note" style="margin-top:14px"><b>Why Δ7 matters.</b> Δ7 neurons spread inhibition across the whole bridge. Without them, excitation runs away and every wedge saturates: the state collapses to a single point and the loop has nothing to go round. With the wiring shuffled within each pair of cell types, the cell-type totals are kept but the neighbour structure is lost, and so is the ring.</div>
     </section>
@@ -267,7 +277,7 @@ footer a{color:var(--ink-70)}
     <section class="ch" id="c6">
       <div class="card prose">
         <h3>What this shows, and what it doesn't</h3>
-        <p><b>The anatomy and the activity have the same shape.</b> A ring of neurons, wired as the connectome says with only cell-type-level tuning, produces activity whose 46-dimensional state space is a single persistent loop. Breaking the wiring removes the loop.</p>
+        <p><b>The anatomy and the activity have the same shape.</b> A ring of neurons, wired as the connectome says with only cell-type-level tuning, produces activity whose high-dimensional state space is a single persistent loop. Breaking the wiring removes the loop.</p>
         <p>This is a <b>simulation constrained by the connectome</b>, not a recording from a fly. Neurotransmitter signs (E-PG, P-EN, P-EG excitatory; Δ7 inhibitory) are standard assumptions. A long H<sub>1</sub> bar shows that the states form a loop; it does not by itself prove a ring attractor, which also needs the bump to persist and move continuously. Real recordings of mouse head-direction cells show the same topology (Chaudhuri et al. 2019).</p>
         <h3>Sources</h3>
         <ol class="refs">
@@ -278,7 +288,8 @@ footer a{color:var(--ink-70)}
           <li>Duan, Dong &amp; Fiete (2025). Connectome-constrained model of the fly head-direction circuit (bioRxiv). <a href="https://doi.org/10.1101/2025.05.26.655406">doi</a></li>
           <li>Chaudhuri et al. (2019). The intrinsic attractor manifold and population dynamics of a canonical cognitive circuit. <i>Nat Neurosci</i> 22. <a href="https://doi.org/10.1038/s41593-019-0460-x">doi</a></li>
           <li>Gardner et al. (2022). Toroidal topology of population activity in grid cells. <i>Nature</i> 602. <a href="https://doi.org/10.1038/s41586-021-04268-7">doi</a></li>
-          <li>Data: hemibrain v1.2.1 (Scheffer et al. 2020, <i>eLife</i>), CC-BY 4.0, via neuPrint. Persistent homology: Ripser (Bauer 2021), MIT licence, compiled to WebAssembly.</li>
+          <li>Dorkenwald et al. (2024). Neuronal wiring diagram of an adult brain. <i>Nature</i> 634. <a href="https://doi.org/10.1038/s41586-024-07558-y">doi</a> · Schlegel et al. (2024). Whole-brain annotation and multi-connectome cell typing of <i>Drosophila</i>. <i>Nature</i> 634. <a href="https://doi.org/10.1038/s41586-024-07686-5">doi</a></li>
+          <li>Data: hemibrain v1.2.1 (Scheffer et al. 2020, <i>eLife</i>), CC-BY 4.0, via neuPrint. FlyWire v783 connections (Zenodo 10676866) and annotations, used under the FlyWire terms (CC BY-NC 4.0); FlyWire E-PG ring positions inferred here from connectivity. Persistent homology: Ripser (Bauer 2021), MIT licence, compiled to WebAssembly.</li>
         </ol>
         <p>New to persistent homology? <a href="topology.html">Play with it on a few points you draw yourself →</a></p>
       </div>
@@ -296,15 +307,41 @@ const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const hue = a => `hsl(${(((a % TAU) + TAU) % TAU) / TAU * 360},70%,50%)`;
 const INK = "#16181d", H0C = "#2563c9", H1C = "#d9472b";
 
+const MODELS = {};
+async function getModel(name) { return MODELS[name] ||= await (await fetch(`compass/web/model_${name}.json`)).json(); }
 let model;
-try { model = await (await fetch("compass/web/model_hemibrain.json")).json(); }
+try { model = await getModel("hemibrain"); }
 catch (e) {
   $("err").style.display = "block";
   $("err").textContent = "This page loads its model and WebAssembly files over HTTP. Open it from the website, or run a local server (python3 -m http.server) instead of opening the file directly.";
   throw e;
 }
-const c = new Circuit(model, "fitted");
-const N = c.N, DT = model.dt;
+let c = new Circuit(model, "fitted");
+let N = c.N;
+const DT = model.dt;
+const BRAIN = { hemibrain: "hemibrain", flywire: "FlyWire" };
+function modelChanged() {
+  N = c.N;
+  wedgeOf = model.neurons.map(x => x.angle === null ? -1 : Math.round(x.angle / (TAU / 16)) % 16);
+  const dim = c.epgIdx.length;
+  document.querySelectorAll(".dimN").forEach(el => el.textContent = dim);
+  $("wInfo").textContent = `${N} × ${N} · ${BRAIN[model.dataset || "hemibrain"]}`;
+  $("nNeur").textContent = `${N} neurons`;
+  $("nSyn").textContent = `${model.edges.reduce((a, e) => a + e[2], 0).toLocaleString("en-US")} synapses`;
+  $("srcTxt").textContent = model.dataset === "flywire" ? "FlyWire, a whole-brain electron-microscopy reconstruction of another female fly (imaged and segmented with different methods, so its synapse totals are not directly comparable)" : "the hemibrain, an electron-microscopy reconstruction of a female fly's brain";
+  for (const k in expRes) delete expRes[k];
+  document.querySelectorAll(".exp").forEach(el => { el.classList.remove("yes"); el.querySelector(".res").textContent = "not run yet"; });
+  $("expInfo").textContent = `runs the ${BRAIN[model.dataset || "hemibrain"]} circuit · about 25 s`; $("btnExp").textContent = "Run all four experiments";
+  drawExps();
+}
+document.querySelectorAll("[data-cx]").forEach(b => b.addEventListener("click", async () => {
+  const name = b.dataset.cx; if ((model.dataset || "hemibrain") === name) return;
+  document.querySelectorAll("[data-cx]").forEach(x => x.disabled = true);
+  try { model = await getModel(name); } catch (e) { document.querySelectorAll("[data-cx]").forEach(x => x.disabled = false); return; }
+  c = new Circuit(model, $("cond").value); window.__compass.c = c;
+  document.querySelectorAll("[data-cx]").forEach(x => { x.disabled = false; x.setAttribute("aria-pressed", x.dataset.cx === name); });
+  modelChanged(); restart();
+}));
 
 /* ---------------- state ---------------- */
 let heading = 0, vel = 0, auto = true, lights = false, ou = 0, cueSteps = 0, steps = 0;
@@ -368,7 +405,7 @@ function sizeAll() {
 addEventListener("resize", sizeAll);
 
 /* ---------------- live views ---------------- */
-const wedgeOf = model.neurons.map(x => x.angle === null ? -1 : Math.round(x.angle / (TAU / 16)) % 16);
+let wedgeOf = model.neurons.map(x => x.angle === null ? -1 : Math.round(x.angle / (TAU / 16)) % 16);
 function draw() {
   const d = c.decode();
   const W = ring.width, H = ring.height, cx = W / 2, cy = H / 2, R = Math.min(W, H) * .33, w = R * .27;
@@ -655,7 +692,7 @@ function drawBars() {
   g.strokeStyle = "rgba(22,24,29,.4)"; g.lineWidth = 1; g.beginPath(); g.moveTo(L, axis + .5); g.lineTo(w - Rp, axis + .5); g.stroke();
   g.fillStyle = "rgba(22,24,29,.5)"; g.font = "10px Inter, sans-serif"; g.textAlign = "center";
   const step = niceStep(max); for (let v = 0; v <= max; v += step) g.fillText(v.toFixed(step < 1 ? 1 : 0), X(v), axis + 12);
-  g.font = "11px Inter, sans-serif"; g.fillText("scale ε (distance between states, 46-D)", (L + w) / 2, h - 2);
+  g.font = "11px Inter, sans-serif"; g.fillText(`scale ε (distance between states, ${c.epgIdx.length}-D)`, (L + w) / 2, h - 2);
   g.strokeStyle = INK; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(X(eps), top - 2); g.lineTo(X(eps), axis); g.stroke(); g.setLineDash([]);
 }
 
@@ -690,7 +727,7 @@ function verdict() {
   const L = lifetimes(S.topo.h1);
   if (S.thr === null) { el.innerHTML = `The longest-lived loop lives <b>${(L[0] || 0).toFixed(2)}</b>; the next one only ${(L[1] || 0).toFixed(2)}. Press <b style="color:inherit">▶ Play</b> to watch it be born and die, then run the shuffle test to see whether it beats chance.`; return; }
   const k = L.filter(v => v > S.thr).length;
-  el.innerHTML = k === 1 ? `<b>One loop</b> rises above the shuffle band (${L[0].toFixed(2)} vs ${S.thr.toFixed(2)}): the 46-dimensional activity lies on a ring.`
+  el.innerHTML = k === 1 ? `<b>One loop</b> rises above the shuffle band (${L[0].toFixed(2)} vs ${S.thr.toFixed(2)}): the ${c.epgIdx.length}-dimensional activity lies on a ring.`
     : k === 0 ? `<b>No loop</b> rises above the shuffle band (${(L[0] || 0).toFixed(2)} vs ${S.thr.toFixed(2)}): the activity does not form a ring.`
     : `<b>${k} loops</b> rise above the shuffle band.`;
 }
@@ -714,23 +751,25 @@ function drawExps() {
     drawDgm(cv, r && r.topo, r && r.thr, max, {});
   }
 }
-function simulate(cond, seed) {
-  const cc = new Circuit(model, cond), rand = (s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; })(seed), gs = gaussFrom(rand);
+function simulate(cond, seed, mdl) {
+  const cc = new Circuit(mdl, cond), rand = (s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; })(seed), gs = gaussFrom(rand);
   let hd = 0, o = 0; const X = [];
-  for (let k = 0; k < 50; k++) cc.step(0, 0, model.cueGain);
+  for (let k = 0; k < 50; k++) cc.step(0, 0, mdl.cueGain);
   for (let k = 0; k < 6000; k++) { o += DT * (-o / .3) + Math.sqrt(2 * DT / .3) * 1.5 * gs(); hd += o * DT; cc.step(o, null); if (k % EVERY === 4) X.push(Array.from(cc.epgState())); }
   return X;
 }
 $("btnExp").addEventListener("click", async () => {
-  const btn = $("btnExp"); btn.disabled = true; const t0 = performance.now();
+  const btn = $("btnExp"); btn.disabled = true; const t0 = performance.now(), m0 = model;
   for (const x of EXPS) { expRes[x.cond] = null; const el = $("exp-" + x.cond); el.classList.remove("yes"); el.querySelector(".res").textContent = "waiting…"; }
   drawExps();
   for (const x of EXPS) {
     const el = $("exp-" + x.cond), res = el.querySelector(".res");
     res.textContent = "simulating 60 s…"; await new Promise(r => setTimeout(r, 20));
-    const X = simulate(x.cond, 11);
+    if (model !== m0) break;
+    const X = simulate(x.cond, 11, m0);
     try {
       const r = await job({ kind: "full", X, n: 400, shuffles: 20, tag: x.cond }, p => { res.textContent = `shuffle test ${p.done}/${p.total}…`; });
+      if (model !== m0) break;
       expRes[x.cond] = { topo: r, thr: r.threshold };
       const L = lifetimes(r.h1), k = L.filter(v => v > r.threshold).length;
       el.classList.toggle("yes", k >= 1);
@@ -738,8 +777,9 @@ $("btnExp").addEventListener("click", async () => {
     } catch (e) { res.textContent = "failed: " + e.message; }
     drawExps();
   }
-  $("expInfo").textContent = `done in ${((performance.now() - t0) / 1000).toFixed(0)} s`;
-  btn.disabled = false; btn.textContent = "Run again";
+  btn.disabled = false;
+  if (model !== m0) return;
+  $("expInfo").textContent = `${BRAIN[m0.dataset || "hemibrain"]} · done in ${((performance.now() - t0) / 1000).toFixed(0)} s`; btn.textContent = "Run again";
 });
 
 sizeAll(); restart(); requestAnimationFrame(tick);

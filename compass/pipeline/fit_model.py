@@ -17,6 +17,7 @@ Usage: python fit_model.py [--steps 600]
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 
 import numpy as np
@@ -26,24 +27,28 @@ torch.set_num_threads(4)
 D = Path(__file__).resolve().parent.parent / "data"
 TYPES = ["EPG", "EPGt", "PEN1", "PEN2", "PEG", "D7"]
 DT = 0.01  # s
+DATASET = os.environ.get("COMPASS_DATA", "hemibrain")   # "hemibrain" or "flywire"
 
 
-def load():
-    z = np.load(D / "hemibrain_hd.npz")
-    meta = json.loads((D / "hemibrain_hd_neurons.json").read_text())
+def load(name=None):
+    name = name or DATASET
+    z = np.load(D / f"{name}_hd.npz")
+    meta = json.loads((D / f"{name}_hd_neurons.json").read_text())
     counts = torch.tensor(z["counts"], dtype=torch.float32)
     sign = torch.tensor(z["sign"], dtype=torch.float32)
     tix = torch.tensor([TYPES.index(m["type"]) for m in meta])
     gl = [m["glom"] for m in meta]
-    # EPG heading: 16 EB wedges, right glomeruli on even wedges, left on odd ones (from EPG<->EPG pairing)
     ang = torch.full((len(meta),), float("nan"))
     for i, m in enumerate(meta):
         if m["type"] != "EPG": continue
+        if "angle" in m:            # FlyWire: inferred from connectivity (ring_order.py)
+            ang[i] = m["angle"]; continue
+        # hemibrain: 16 EB wedges, right glomeruli on even wedges, left on odd ones (from EPG<->EPG pairing)
         s, k = gl[i][0], int(gl[i][1])
         idx = 2 * (k - 1) if s == "R" else 2 * (8 - k) + 1
         ang[i] = idx * 2 * math.pi / 16
     # PEN side: left-bridge PENs get +velocity, right-bridge PENs get -velocity
-    side = torch.tensor([(1.0 if g.startswith("L") else -1.0) if m["type"] in ("PEN1", "PEN2") else 0.0
+    side = torch.tensor([(1.0 if (m.get("side") or g)[0] == "L" else -1.0) if m["type"] in ("PEN1", "PEN2") else 0.0
                          for g, m in zip(gl, meta)])
     return counts, sign, tix, ang, side, meta
 
@@ -172,7 +177,7 @@ def main():
     model = Circuit(counts, sign, tix, ang, side, mode="fit", g0=4.0)
     train(model, a.steps)
     ev = evaluate(model); print("fitted:", ev)
-    torch.save({"state": model.state_dict(), "eval": ev, "raw_best": best}, D / "fit_hemibrain.pt")
+    torch.save({"state": model.state_dict(), "eval": ev, "raw_best": best}, D / f"fit_{DATASET}.pt")
 
 
 if __name__ == "__main__":

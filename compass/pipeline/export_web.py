@@ -12,15 +12,19 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from fit_model import Circuit, load, make_batch, TYPES, D
+from fit_model import Circuit, load, make_batch, TYPES, D, DATASET
 
 WEB = Path(__file__).resolve().parents[2] / "compass" / "web"
 WEB.mkdir(exist_ok=True)
 
 counts, sign, tix, ang, side, meta = load()
-ck = torch.load(D / "fit_hemibrain.pt")
+ck = torch.load(D / f"fit_{DATASET}.pt")
 m = Circuit(counts, sign, tix, ang, side, mode="fit"); m.load_state_dict(ck["state"])
 norm = float(counts.sum(1).median())
+SOURCES = {
+    "hemibrain": "hemibrain v1.2.1 (Scheffer et al. 2020, eLife; CC-BY 4.0) via neuPrint",
+    "flywire": "FlyWire v783 (Dorkenwald et al. 2024, Schlegel et al. 2024, Nature); E-PG ring positions inferred from connectivity",
+}
 
 post, pre = np.nonzero(counts.numpy())
 cnt = counts.numpy()[post, pre].astype(int)
@@ -37,7 +41,8 @@ def params(model):
 
 raw = Circuit(counts, sign, tix, ang, side, mode="raw", g0=ck["raw_best"][0])
 out = {
-    "source": "hemibrain v1.2.1 (Scheffer et al. 2020, eLife; CC-BY 4.0) via neuPrint",
+    "dataset": DATASET,
+    "source": SOURCES[DATASET],
     "types": TYPES,
     "neurons": [{"type": mm["type"], "glom": mm["glom"], "bodyId": mm["bodyId"],
                  "angle": None if math.isnan(float(a)) else round(float(a), 6), "side": float(s)}
@@ -50,12 +55,12 @@ out = {
     "params": {"fitted": params(m), "raw": params(raw)},
     "eval": {"fitted": ck["eval"], "raw": ck["raw_best"][1]},
 }
-(WEB / "model_hemibrain.json").write_text(json.dumps(out, separators=(",", ":")))
+(WEB / f"model_{DATASET}.json").write_text(json.dumps(out, separators=(",", ":")))
 
 # reference run for the JS port: 300 steps, cue for 40 steps at 1 rad, then constant turning
 with torch.no_grad():
     v = torch.zeros(1, 300); v[:, 40:] = 1.0
     r, dec = m.run(v, torch.tensor([1.0]), 40)
-(D / "reference_run.json").write_text(json.dumps({"vel": v[0].tolist(), "cueAngle": 1.0, "cueSteps": 40,
+(D / ("reference_run.json" if DATASET == "hemibrain" else f"reference_run_{DATASET}.json")).write_text(json.dumps({"vel": v[0].tolist(), "cueAngle": 1.0, "cueSteps": 40,
                                                    "decoded": dec[0].numpy().round(6).tolist()}))
-print("edges", len(cnt), "bytes", (WEB / "model_hemibrain.json").stat().st_size)
+print("edges", len(cnt), "bytes", (WEB / f"model_{DATASET}.json").stat().st_size)

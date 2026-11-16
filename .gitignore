@@ -1,4 +1,4 @@
 room/
 compass/data/*.pt
-compass/data/fit_log.txt
+compass/data/fit_log*.txt
 __pycache__/

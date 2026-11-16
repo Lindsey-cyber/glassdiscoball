@@ -17,11 +17,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from fit_model import Circuit, load, make_batch, heading, TYPES, D
+from fit_model import Circuit, load, make_batch, heading, TYPES, D, DATASET
 
 torch.manual_seed(1); np.random.seed(1)
 counts, sign, tix, ang, side, meta = load()
-ck = torch.load(D / "fit_hemibrain.pt")
+ck = torch.load(D / f"fit_{DATASET}.pt")
 T, CUE = 6000, 50  # 60 s
 
 
@@ -91,7 +91,7 @@ for cond in ["fitted", "raw", "no_delta7", "shuffled"]:
     print(cond, results[cond], flush=True)
     panels.append((cond, pc @ Vt[:2].T, true, dg, thr))
 
-(D / "topology_check.json").write_text(json.dumps(results, indent=1))
+(D / ("topology_check.json" if DATASET == "hemibrain" else f"topology_check_{DATASET}.json")).write_text(json.dumps(results, indent=1))
 
 fig, axs = plt.subplots(2, 4, figsize=(16, 7.5), dpi=130)
 for k, (cond, P, true, dg, thr) in enumerate(panels):
@@ -107,5 +107,5 @@ for k, (cond, P, true, dg, thr) in enumerate(panels):
     ax.set_xlim(0, xmax); ax.invert_yaxis(); ax.set_yticks([])
     ax.set_title(f"H1 barcode (top 15)\nshuffle threshold (lifetime) = {thr:.3f}", fontsize=9)
     ax.set_xlabel("bar lifetime (death − birth); dashed = shuffle threshold")
-fig.tight_layout(); fig.savefig(D / "topology_check.png")
+fig.tight_layout(); fig.savefig(D / ("topology_check.png" if DATASET == "hemibrain" else f"topology_check_{DATASET}.png"))
 print("saved")
